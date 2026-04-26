@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>和弦練習系統 - 音效版</title>
+<title>和弦練習系統 - 音效優化版</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -112,6 +112,7 @@ body::after {
   aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
   background: var(--bg3); border: 1px solid var(--border); border-radius: 3px;
   font-family: var(--mono); font-size: 13px; color: var(--text2); cursor: pointer;
+  user-select: none;
 }
 .nbtn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,200,255,.1); }
 .nbtn.correct { border-color: var(--ok); color: var(--ok); background: rgba(0,255,179,.1); }
@@ -138,7 +139,7 @@ body::after {
 <div id="app">
   <div class="hdr">
     <div class="hdr-logo"><span>// </span>和弦練習系統<span> //</span></div>
-    <div class="hdr-ver">v2.1 · AUDIO</div>
+    <div class="hdr-ver">v2.2 · MOBILE FIX</div>
   </div>
 
   <div class="scores">
@@ -160,7 +161,6 @@ body::after {
 
   <div class="notesec">
     <div class="note-grid" id="noteGrid"></div>
-    <div id="pressedRow" style="min-height:20px"></div>
   </div>
 
   <div class="actions">
@@ -178,26 +178,32 @@ body::after {
 </div>
 
 <script>
-// --- 音訊引擎 ---
-const AudioContext = window.AudioContext || window.webkitAudioContext;
+// --- 音訊引擎修正 ---
 let audioCtx = null;
-
-// 頻率表 (C4 ~ B4)
-const FREQS = [261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88];
+// 頻率表擴展 (支援更多音高防止報錯)
+const FREQS = [
+  261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88,
+  523.25, 554.37, 587.33, 622.25, 659.25, 698.46, 739.99, 783.99, 830.61, 880.00, 932.33, 987.77
+];
 
 function initAudio() {
-  if (!audioCtx) audioCtx = new AudioContext();
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
 }
 
 function playTone(idx) {
   initAudio();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   
   osc.type = 'triangle'; 
-  osc.frequency.setValueAtTime(FREQS[idx], audioCtx.currentTime);
+  // 防止索引超出頻率表
+  const freq = FREQS[idx] || FREQS[idx % 12] * 2;
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
   
   gain.gain.setValueAtTime(0, audioCtx.currentTime);
   gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
@@ -210,7 +216,11 @@ function playTone(idx) {
 }
 
 function playChord(notes) {
-  notes.forEach(n => playTone(n));
+  initAudio();
+  notes.forEach((n, i) => {
+    // 稍微錯開時間模擬琶音，聽起來更自然
+    setTimeout(() => playTone(n), i * 30);
+  });
 }
 
 // --- 邏輯數據 ---
@@ -231,8 +241,11 @@ let correct=0, wrong=0, streak=0, total=0, ft=null;
 
 function getChordNotes(root, tid, inv) {
   const t = CT.find(x => x.id === tid);
-  let notes = t.iv.map(v => (root + v) % 12);
-  for (let i = 0; i < inv; i++) notes.push(notes.shift());
+  let notes = t.iv.map(v => (root + v)); // 不要在這取餘數，為了區分音高
+  for (let i = 0; i < inv; i++) {
+    let first = notes.shift();
+    notes.push(first + 12); // 轉位後音高加八度
+  }
   return notes;
 }
 
@@ -251,7 +264,7 @@ function newQ() {
   document.getElementById('invtag').style.display = inv > 0 ? 'inline-block' : 'none';
   document.getElementById('invtag').textContent = IL[inv];
   document.getElementById('hnotes').style.visibility = 'hidden';
-  document.getElementById('hnotes').textContent = getChordNotes(root, tid, inv).map(n => DF[n]).join(' · ');
+  document.getElementById('hnotes').textContent = getChordNotes(root, tid, inv).map(n => DF[n % 12]).join(' · ');
   document.getElementById('fb').className = 'fb-bar';
   document.getElementById('qcard').className = 'qcard';
   
@@ -260,7 +273,8 @@ function newQ() {
 
 function check() {
   if (answered || !pressed.size) return;
-  const target = new Set(getChordNotes(Q.root, Q.tid, Q.inv));
+  // 檢查時只比對音名 (0-11)
+  const target = new Set(getChordNotes(Q.root, Q.tid, Q.inv).map(n => n % 12));
   const isOk = pressed.size === target.size && [...target].every(n => pressed.has(n));
   
   answered = true;
@@ -270,7 +284,7 @@ function check() {
     document.getElementById('qcard').className = 'qcard ok';
     document.getElementById('fb').textContent = '✓ CORRECT';
     document.getElementById('fb').className = 'fb-bar show ok';
-    playChord([...target]); // 答對播放完整和弦
+    playChord(getChordNotes(Q.root, Q.tid, Q.inv)); // 播放正確頻率
     setTimeout(newQ, 1200);
   } else {
     wrong++; streak = 0;
@@ -290,7 +304,7 @@ function check() {
 function renderNotes() {
   const grid = document.getElementById('noteGrid');
   grid.innerHTML = '';
-  const target = Q ? new Set(getChordNotes(Q.root, Q.tid, Q.inv)) : new Set();
+  const target = Q ? new Set(getChordNotes(Q.root, Q.tid, Q.inv).map(n => n % 12)) : new Set();
   
   for (let i = 0; i < 12; i++) {
     const btn = document.createElement('button');
@@ -305,18 +319,21 @@ function renderNotes() {
       btn.classList.add('active');
     }
     
+    // 使用 pointerdown 並在裡面第一時間呼叫 initAudio
     btn.addEventListener('pointerdown', e => {
       e.preventDefault();
+      initAudio(); // 關鍵：在使用者點擊的第一時間解鎖音訊
+      
       if (answered) return;
       
-      playTone(i); // 按下按鈕發出單音
+      playTone(i); 
       
       if (pressed.has(i)) pressed.delete(i);
       else pressed.add(i);
       
       renderNotes();
       clearTimeout(ft);
-      ft = setTimeout(check, 600);
+      ft = setTimeout(check, 800); // 稍微加長判定時間，適合平板操作
     });
     grid.appendChild(btn);
   }
@@ -329,7 +346,8 @@ function setup() {
     const b = document.createElement('button');
     b.className = 'tbtn' + (aT.has(t.id) ? ' on' : '');
     b.textContent = t.n;
-    b.onclick = () => {
+    b.onclick = (e) => {
+      initAudio();
       if (aT.has(t.id) && aT.size > 1) aT.delete(t.id); else aT.add(t.id);
       b.className = 'tbtn' + (aT.has(t.id) ? ' on' : '');
     };
@@ -337,10 +355,11 @@ function setup() {
   });
 
   document.getElementById('stog').onclick = () => {
+    initAudio();
     document.getElementById('sbody').classList.toggle('open');
   };
-  document.getElementById('nextBtn').onclick = newQ;
-  document.getElementById('skipBtn').onclick = () => { if(!answered){wrong++; total++; streak=0;} newQ(); };
+  document.getElementById('nextBtn').onclick = () => { initAudio(); newQ(); };
+  document.getElementById('skipBtn').onclick = () => { initAudio(); if(!answered){wrong++; total++; streak=0;} newQ(); };
   
   newQ();
 }
