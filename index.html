@@ -55,10 +55,24 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 .key.black { width: 22px; height: 95px; background: var(--black-key); z-index: 2; margin-left: -11px; margin-right: -11px; border-color: #000; color: #fff; font-size: 8px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; }
 
 /* 鍵盤狀態 */
-.key.active { background: var(--accent) !important; color: #fff; }
-.key.correct { background: var(--ok) !important; }
-.key.wrong { background: var(--ng) !important; }
-.key.missing { border: 2px dashed var(--ok); }
+.key.active { 
+  background: var(--accent) !important; 
+  color: #fff !important; 
+  box-shadow: inset 0 -5px 0 rgba(0,0,0,0.2);
+}
+.key.correct { 
+  background: var(--ok) !important; 
+  color: var(--bg) !important;
+}
+.key.wrong { 
+  background: var(--ng) !important; 
+  color: #fff !important;
+  box-shadow: 0 0 10px var(--ng); /* 增加發光效果讓黑鍵按錯時更明顯 */
+}
+.key.missing { 
+  box-shadow: inset 0 0 0 3px var(--ok); /* 沒按到的音用內框標示 */
+  border: 2px dashed var(--ok) !important;
+}
 
 /* 選項過濾器 */
 .filter-sec { padding: 15px; }
