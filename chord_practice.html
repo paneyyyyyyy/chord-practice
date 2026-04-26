@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>和弦練習系統</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f4f3ef;
+  min-height: 100vh;
+  color: #1a1a1a;
+}
+
+.header {
+  background: #fff;
+  border-bottom: 1px solid #e5e5e5;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.header-title { font-size: 17px; font-weight: 600; }
+.midi-badge {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+.midi-badge.connected { background: #d1f5e3; color: #1a7a4a; }
+.midi-badge.disconnected { background: #f0f0f0; color: #888; border: 1px solid #ddd; }
+
+.score-bar {
+  background: #fff;
+  padding: 12px 20px;
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #e5e5e5;
+}
+.score-item {
+  flex: 1;
+  text-align: center;
+  border-right: 1px solid #f0f0f0;
+}
+.score-item:last-child { border-right: none; }
+.score-num { font-size: 24px; font-weight: 600; }
+.score-num.green { color: #1a7a4a; }
+.score-num.red { color: #c0392b; }
+.score-num.gold { color: #b8860b; }
+.score-label { font-size: 11px; color: #888; margin-top: 2px; }
+
+.main { padding: 16px; max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+
+/* Settings */
+.settings-panel {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e5e5e5;
+  overflow: hidden;
+}
+.settings-header {
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+.settings-body { padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
+.settings-section-label { font-size: 12px; color: #888; font-weight: 500; margin-bottom: 6px; }
+.type-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.type-btn {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1.5px solid #e0e0e0;
+  background: #f8f8f8;
+  color: #666;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.type-btn.active {
+  background: #1a1a1a;
+  color: #fff;
+  border-color: #1a1a1a;
+}
+.inversion-row {
+  display: flex;
+  gap: 6px;
+}
+.inversion-btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1.5px solid #e0e0e0;
+  background: #f8f8f8;
+  color: #666;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.inversion-btn.active {
+  background: #1a1a1a;
+  color: #fff;
+  border-color: #1a1a1a;
+}
+.toggle-arrow { transition: transform 0.2s; }
+.toggle-arrow.open { transform: rotate(180deg); }
+
+/* Question card */
+.question-card {
+  background: #fff;
+  border-radius: 18px;
+  border: 1.5px solid #e5e5e5;
+  padding: 28px 20px 22px;
+  text-align: center;
+  position: relative;
+  transition: border-color 0.25s, background 0.25s;
+  min-height: 180px;
+}
+.question-card.correct { border-color: #1a7a4a; background: #f0faf5; }
+.question-card.wrong { border-color: #c0392b; background: #fdf3f2; }
+
+.q-eyebrow { font-size: 11px; color: #aaa; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+.chord-name { font-size: 60px; font-weight: 700; line-height: 1; margin-bottom: 6px; letter-spacing: -2px; }
+.chord-sub { font-size: 14px; color: #666; margin-bottom: 10px; }
+.inversion-badge {
+  display: inline-block;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: #f0f0f0;
+  color: #555;
+  margin-bottom: 12px;
+}
+.notes-hint {
+  font-size: 14px;
+  color: #555;
+  padding: 8px 16px;
+  background: #f4f3ef;
+  border-radius: 10px;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.feedback-banner {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  border-radius: 0 0 16px 16px;
+  padding: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+.feedback-banner.show { opacity: 1; }
+.feedback-banner.correct-fb { background: #d1f5e3; color: #1a5c38; }
+.feedback-banner.wrong-fb { background: #fde8e6; color: #922b21; }
+
+/* Pressed notes */
+.pressed-section {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e5e5e5;
+  padding: 14px 16px;
+}
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.section-label { font-size: 12px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+.hint-btn {
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid #e0e0e0;
+  background: transparent;
+  color: #555;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+.hint-btn:hover { background: #f4f3ef; }
+
+.pressed-notes-display {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  min-height: 30px;
+  align-items: center;
+}
+.note-pill {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 13px;
+  border-radius: 20px;
+}
+.note-pill.good { background: #d1f5e3; color: #1a5c38; }
+.note-pill.extra { background: #fde8e6; color: #922b21; }
+.note-pill.missing { background: #f0f0f0; color: #888; border: 1px dashed #ccc; }
+.no-notes { font-size: 13px; color: #bbb; }
+
+/* Piano */
+.piano-section {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e5e5e5;
+  padding: 16px 12px 14px;
+  overflow: hidden;
+}
+.piano-wrap { overflow-x: auto; padding-bottom: 4px; }
+.piano-keys { position: relative; height: 100px; }
+.wk {
+  position: absolute;
+  width: 30px;
+  height: 100px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 0 0 5px 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 5px;
+  font-size: 9px;
+  color: #bbb;
+  transition: background 0.08s;
+  user-select: none;
+}
+.wk:active, .wk.pressed { background: #dbeafe; }
+.wk.target { background: #bbf7d0; }
+.wk.correct-p { background: #bbf7d0; }
+.wk.wrong-p { background: #fecaca; }
+.bk {
+  position: absolute;
+  width: 20px;
+  height: 60px;
+  background: #222;
+  border-radius: 0 0 4px 4px;
+  z-index: 2;
+  cursor: pointer;
+  transition: background 0.08s;
+  user-select: none;
+}
+.bk:active, .bk.pressed { background: #1d4ed8; }
+.bk.target { background: #16a34a; }
+.bk.correct-p { background: #16a34a; }
+.bk.wrong-p { background: #dc2626; }
+
+/* Action row */
+.action-row { display: flex; gap: 10px; }
+.btn {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1.5px solid #ddd;
+  background: #fff;
+  color: #1a1a1a;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+.btn.primary:active { background: #333; }
+
+.collapsible { display: none; }
+.collapsible.open { display: flex; flex-direction: column; gap: 12px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">和弦練習</div>
+  <span class="midi-badge disconnected" id="midiBadge">MIDI 未連接</span>
+</div>
+
+<div class="score-bar">
+  <div class="score-item">
+    <div class="score-num green" id="sc">0</div>
+    <div class="score-label">答對</div>
+  </div>
+  <div class="score-item">
+    <div class="score-num red" id="sw">0</div>
+    <div class="score-label">答錯</div>
+  </div>
+  <div class="score-item">
+    <div class="score-num gold" id="ss">0</div>
+    <div class="score-label">連續</div>
+  </div>
+  <div class="score-item">
+    <div class="score-num" id="st">0</div>
+    <div class="score-label">總題數</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Settings -->
+  <div class="settings-panel">
+    <div class="settings-header" id="settingsToggle">
+      <span>練習設定</span>
+      <span class="toggle-arrow" id="toggleArrow">▼</span>
+    </div>
+    <div class="collapsible" id="settingsBody">
+      <div>
+        <div class="settings-section-label">和弦類型</div>
+        <div class="type-grid" id="typeGrid"></div>
+      </div>
+      <div>
+        <div class="settings-section-label">倒位</div>
+        <div class="inversion-row" id="invRow"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Question -->
+  <div class="question-card" id="qCard">
+    <div class="q-eyebrow">彈奏這個和弦</div>
+    <div class="chord-name" id="chordName">C</div>
+    <div class="chord-sub" id="chordSub">大三和弦</div>
+    <div class="inversion-badge" id="invBadge" style="display:none"></div>
+    <div class="notes-hint" id="notesHint" style="visibility:hidden">C · E · G</div>
+    <div class="feedback-banner" id="fb"></div>
+  </div>
+
+  <!-- Pressed notes -->
+  <div class="pressed-section">
+    <div class="section-header">
+      <div class="section-label">目前按下的音</div>
+      <button class="hint-btn" id="hintBtn">顯示提示</button>
+    </div>
+    <div class="pressed-notes-display" id="pressedDisplay">
+      <span class="no-notes">等待 MIDI 輸入...</span>
+    </div>
+  </div>
+
+  <!-- Piano -->
+  <div class="piano-section">
+    <div class="section-header" style="margin-bottom:10px">
+      <div class="section-label">鍵盤預覽</div>
+    </div>
+    <div class="piano-wrap">
+      <div class="piano-keys" id="pianoKeys"></div>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="action-row">
+    <button class="btn" id="skipBtn">跳過此題</button>
+    <button class="btn primary" id="nextBtn">下一題 →</button>
+  </div>
+
+</div>
+
+<script>
+// ── 和弦資料庫 ──────────────────────────────────────────────
+const CHORD_TYPES = [
+  // 三和弦
+  { id:'maj',    name:'大三',      symbol:'',      intervals:[0,4,7] },
+  { id:'min',    name:'小三',      symbol:'m',     intervals:[0,3,7] },
+  { id:'aug',    name:'增三',      symbol:'aug',   intervals:[0,4,8] },
+  { id:'dim',    name:'減三',      symbol:'dim',   intervals:[0,3,6] },
+  { id:'sus2',   name:'Sus2',      symbol:'sus2',  intervals:[0,2,7] },
+  { id:'sus4',   name:'Sus4',      symbol:'sus4',  intervals:[0,5,7] },
+  // 七和弦
+  { id:'maj7',   name:'大七',      symbol:'maj7',  intervals:[0,4,7,11] },
+  { id:'dom7',   name:'屬七',      symbol:'7',     intervals:[0,4,7,10] },
+  { id:'min7',   name:'小七',      symbol:'m7',    intervals:[0,3,7,10] },
+  { id:'mMaj7',  name:'小大七',    symbol:'mM7',   intervals:[0,3,7,11] },
+  { id:'dim7',   name:'減七',      symbol:'dim7',  intervals:[0,3,6,9] },
+  { id:'hdim7',  name:'半減七',    symbol:'ø7',    intervals:[0,3,6,10] },
+  { id:'augMaj7',name:'增大七',    symbol:'augM7', intervals:[0,4,8,11] },
+  { id:'aug7',   name:'增屬七',    symbol:'aug7',  intervals:[0,4,8,10] },
+  // 九和弦
+  { id:'maj9',   name:'大九',      symbol:'maj9',  intervals:[0,4,7,11,14] },
+  { id:'dom9',   name:'屬九',      symbol:'9',     intervals:[0,4,7,10,14] },
+  { id:'min9',   name:'小九',      symbol:'m9',    intervals:[0,3,7,10,14] },
+  { id:'add9',   name:'加九',      symbol:'add9',  intervals:[0,4,7,14] },
+  // 六和弦
+  { id:'maj6',   name:'大六',      symbol:'6',     intervals:[0,4,7,9] },
+  { id:'min6',   name:'小六',      symbol:'m6',    intervals:[0,3,7,9] },
+];
+
+const NOTE_NAMES   = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const DISPLAY_FLAT = ['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
+const ROOTS        = [0,1,2,3,4,5,6,7,8,9,10,11];
+
+const INVERSION_LABELS = ['原位','第一轉位','第二轉位','第三轉位'];
+
+// ── 狀態 ────────────────────────────────────────────────────
+let activeTypes = new Set(['maj','min','dom7','maj7','min7']);
+let activeInversions = new Set([0]);  // 0=原位
+let currentQ = null;
+let pressedMidi = new Set();
+let correct=0, wrong=0, streak=0, total=0;
+let answered = false;
+let hintShown = false;
+let feedTimeout = null;
+
+// ── 音符計算 ─────────────────────────────────────────────────
+function chordNotes(root, typeId, inversion) {
+  const type = CHORD_TYPES.find(t => t.id === typeId);
+  // 原始音級 (mod 12)
+  const baseClasses = type.intervals.map(i => (root + i) % 12);
+  // 倒位：把前 inversion 個音移高八度
+  const count = Math.min(inversion, baseClasses.length - 1);
+  let rotated = [...baseClasses];
+  for (let i = 0; i < count; i++) {
+    rotated.push(rotated.shift());
+  }
+  return rotated; // pitch classes in voiced order (mod 12)
+}
+
+function noteSetFromQ(q) {
+  return new Set(chordNotes(q.root, q.typeId, q.inversion));
+}
+
+// ── 題目生成 ──────────────────────────────────────────────────
+function newQuestion() {
+  answered = false;
+  hintShown = false;
+  pressedMidi.clear();
+
+  const types = [...activeTypes];
+  const invs  = [...activeInversions];
+  const typeId    = types[Math.floor(Math.random() * types.length)];
+  const root      = ROOTS[Math.floor(Math.random() * ROOTS.length)];
+  const maxInv    = CHORD_TYPES.find(t=>t.id===typeId).intervals.length - 1;
+  const validInvs = invs.filter(i => i <= maxInv);
+  const inversion = validInvs.length
+    ? validInvs[Math.floor(Math.random() * validInvs.length)]
+    : 0;
+
+  currentQ = { root, typeId, inversion };
+
+  const type    = CHORD_TYPES.find(t => t.id === typeId);
+  const noteClasses = chordNotes(root, typeId, inversion);
+  const noteStr = noteClasses.map(n => DISPLAY_FLAT[n]).join(' · ');
+
+  document.getElementById('chordName').textContent = DISPLAY_FLAT[root] + type.symbol;
+  document.getElementById('chordSub').textContent  = type.name + '和弦';
+
+  const invBadge = document.getElementById('invBadge');
+  if (inversion > 0) {
+    invBadge.textContent = INVERSION_LABELS[inversion];
+    invBadge.style.display = '';
+  } else {
+    invBadge.style.display = 'none';
+  }
+
+  const hint = document.getElementById('notesHint');
+  hint.textContent = noteStr;
+  hint.style.visibility = 'hidden';
+
+  const card = document.getElementById('qCard');
+  card.className = 'question-card';
+
+  const fb = document.getElementById('fb');
+  fb.className = 'feedback-banner';
+  fb.textContent = '';
+
+  updatePressedDisplay();
+  renderPiano();
+}
+
+// ── 判斷 ─────────────────────────────────────────────────────
+function checkAnswer() {
+  if (answered || !currentQ) return;
+  const pressedClasses = new Set([...pressedMidi].map(m => m % 12));
+  if (pressedClasses.size === 0) return;
+
+  const target = noteSetFromQ(currentQ);
+  const isCorrect = pressedClasses.size === target.size &&
+    [...target].every(n => pressedClasses.has(n));
+
+  answered = true;
+  const card = document.getElementById('qCard');
+  const fb   = document.getElementById('fb');
+  document.getElementById('notesHint').style.visibility = 'visible';
+
+  if (isCorrect) {
+    correct++; streak++;
+    card.className = 'question-card correct';
+    fb.textContent = '✓ 正確！';
+    fb.className = 'feedback-banner show correct-fb';
+    setTimeout(() => { if(answered) newQuestion(); }, 900);
+  } else {
+    wrong++; streak = 0;
+    card.className = 'question-card wrong';
+    fb.textContent = '✗ 不對，請再試試';
+    fb.className = 'feedback-banner show wrong-fb';
+  }
+  total++;
+  updateScore();
+  renderPiano();
+  updatePressedDisplay();
+}
+
+function updateScore() {
+  document.getElementById('sc').textContent = correct;
+  document.getElementById('sw').textContent = wrong;
+  document.getElementById('ss').textContent = streak;
+  document.getElementById('st').textContent = total;
+}
+
+// ── Pressed notes display ─────────────────────────────────────
+function updatePressedDisplay() {
+  const el = document.getElementById('pressedDisplay');
+  el.innerHTML = '';
+  if (pressedMidi.size === 0) {
+    el.innerHTML = '<span class="no-notes">等待 MIDI 輸入...</span>';
+    return;
+  }
+  const target = currentQ ? noteSetFromQ(currentQ) : new Set();
+  const pressedClasses = new Set([...pressedMidi].map(m => m%12));
+
+  // pressed notes
+  [...pressedMidi].sort((a,b)=>a-b).forEach(m => {
+    const n = m % 12;
+    const pill = document.createElement('span');
+    pill.className = 'note-pill ' + (target.has(n) ? 'good' : 'extra');
+    pill.textContent = DISPLAY_FLAT[n];
+    el.appendChild(pill);
+  });
+
+  // missing notes (only show after answered wrong)
+  if (answered) {
+    [...target].forEach(n => {
+      if (!pressedClasses.has(n)) {
+        const pill = document.createElement('span');
+        pill.className = 'note-pill missing';
+        pill.textContent = DISPLAY_FLAT[n] + ' ?';
+        el.appendChild(pill);
+      }
+    });
+  }
+}
+
+// ── Piano ─────────────────────────────────────────────────────
+const WHITE_PATTERN = [0,2,4,5,7,9,11]; // note classes that are white keys
+const BLACK_MAP     = {1:0,3:1,6:3,8:4,10:5}; // note class → black key index in octave
+
+function renderPiano() {
+  const container = document.getElementById('pianoKeys');
+  container.innerHTML = '';
+  const target  = currentQ ? noteSetFromQ(currentQ) : new Set();
+  const pressed = new Set([...pressedMidi].map(m => m%12));
+
+  const OCTAVES = [3,4,5];
+  let wIdx = 0;
+
+  OCTAVES.forEach(oct => {
+    // white keys
+    WHITE_PATTERN.forEach(nc => {
+      const midi = oct*12 + nc;
+      const div  = document.createElement('div');
+      div.className = 'wk';
+      div.style.left = (wIdx * 31) + 'px';
+      const isPressed = pressedMidi.has(midi);
+      const isTarget  = target.has(nc);
+      if (answered && isTarget && isPressed) div.classList.add('correct-p');
+      else if (answered && isTarget)         div.classList.add('target');
+      else if (answered && isPressed)        div.classList.add('wrong-p');
+      else if (isPressed)                    div.classList.add('pressed');
+      div.textContent = NOTE_NAMES[nc] + oct;
+      div.addEventListener('pointerdown', () => mouseNote(midi, true));
+      div.addEventListener('pointerup',   () => mouseNote(midi, false));
+      container.appendChild(div);
+      wIdx++;
+    });
+  });
+
+  container.style.width = (wIdx * 31) + 'px';
+
+  let baseW = 0;
+  OCTAVES.forEach(oct => {
+    // black keys
+    Object.entries(BLACK_MAP).forEach(([ncStr, bIdx]) => {
+      const nc   = parseInt(ncStr);
+      const midi = oct*12 + nc;
+      const wPos = WHITE_PATTERN.filter(w => w < nc).length;
+      const div  = document.createElement('div');
+      div.className = 'bk';
+      div.style.left = (baseW * 31 + wPos * 31 + 17) + 'px';
+      const isPressed = pressedMidi.has(midi);
+      const isTarget  = target.has(nc);
+      if (answered && isTarget && isPressed) div.classList.add('correct-p');
+      else if (answered && isTarget)         div.classList.add('target');
+      else if (answered && isPressed)        div.classList.add('wrong-p');
+      else if (isPressed)                    div.classList.add('pressed');
+      div.addEventListener('pointerdown', () => mouseNote(midi, true));
+      div.addEventListener('pointerup',   () => mouseNote(midi, false));
+      container.appendChild(div);
+    });
+    baseW += 7;
+  });
+}
+
+function mouseNote(midi, on) {
+  if (on) pressedMidi.add(midi);
+  else    pressedMidi.delete(midi);
+  updatePressedDisplay();
+  renderPiano();
+  if (on && !answered) {
+    clearTimeout(feedTimeout);
+    feedTimeout = setTimeout(checkAnswer, 350);
+  }
+}
+
+// ── MIDI ──────────────────────────────────────────────────────
+async function setupMIDI() {
+  const badge = document.getElementById('midiBadge');
+  if (!navigator.requestMIDIAccess) {
+    badge.textContent = '瀏覽器不支援 MIDI';
+    return;
+  }
+  try {
+    const access = await navigator.requestMIDIAccess({ sysex: false });
+
+    function connectAll() {
+      let n = 0;
+      access.inputs.forEach(inp => { inp.onmidimessage = onMIDI; n++; });
+      badge.textContent = n > 0 ? `MIDI 已連接 (${n} 裝置)` : 'MIDI 未連接';
+      badge.className   = 'midi-badge ' + (n > 0 ? 'connected' : 'disconnected');
+    }
+
+    access.onstatechange = connectAll;
+    connectAll();
+  } catch(e) {
+    badge.textContent = 'MIDI 存取被拒';
+  }
+}
+
+function onMIDI(msg) {
+  const [st, note, vel] = msg.data;
+  const cmd = st & 0xF0;
+  if (cmd === 0x90 && vel > 0) {
+    pressedMidi.add(note);
+    updatePressedDisplay();
+    renderPiano();
+    if (!answered) {
+      clearTimeout(feedTimeout);
+      feedTimeout = setTimeout(checkAnswer, 350);
+    }
+  } else if (cmd === 0x80 || (cmd === 0x90 && vel === 0)) {
+    pressedMidi.delete(note);
+    if (!answered) { updatePressedDisplay(); renderPiano(); }
+  }
+}
+
+// ── UI 建立 ───────────────────────────────────────────────────
+function buildTypeGrid() {
+  const grid = document.getElementById('typeGrid');
+  grid.innerHTML = '';
+  CHORD_TYPES.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'type-btn' + (activeTypes.has(t.id) ? ' active' : '');
+    btn.textContent = t.name;
+    btn.title = t.name + '和弦 (' + t.symbol + ')';
+    btn.onclick = () => {
+      if (activeTypes.has(t.id) && activeTypes.size === 1) return;
+      activeTypes.has(t.id) ? activeTypes.delete(t.id) : activeTypes.add(t.id);
+      buildTypeGrid();
+    };
+    grid.appendChild(btn);
+  });
+}
+
+function buildInvRow() {
+  const row = document.getElementById('invRow');
+  row.innerHTML = '';
+  INVERSION_LABELS.forEach((label, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'inversion-btn' + (activeInversions.has(i) ? ' active' : '');
+    btn.textContent = label;
+    btn.onclick = () => {
+      if (activeInversions.has(i) && activeInversions.size === 1) return;
+      activeInversions.has(i) ? activeInversions.delete(i) : activeInversions.add(i);
+      buildInvRow();
+    };
+    row.appendChild(btn);
+  });
+}
+
+// Settings toggle
+document.getElementById('settingsToggle').onclick = () => {
+  const body  = document.getElementById('settingsBody');
+  const arrow = document.getElementById('toggleArrow');
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
+};
+
+document.getElementById('hintBtn').onclick = () => {
+  hintShown = true;
+  document.getElementById('notesHint').style.visibility = 'visible';
+};
+
+document.getElementById('nextBtn').onclick = newQuestion;
+document.getElementById('skipBtn').onclick = () => {
+  if (!answered) { wrong++; total++; streak = 0; updateScore(); }
+  newQuestion();
+};
+
+// ── 初始化 ────────────────────────────────────────────────────
+buildTypeGrid();
+buildInvRow();
+newQuestion();
+setupMIDI();
+</script>
+</body>
+</html>
