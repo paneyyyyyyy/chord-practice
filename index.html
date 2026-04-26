@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>和弦練習系統</title>
+<title>和弦練習系統 - 音效版</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -33,30 +33,20 @@ body {
   overflow-x: hidden;
 }
 
-/* Scanline overlay */
+/* 背景裝飾 */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,200,255,0.015) 2px,
-    rgba(0,200,255,0.015) 4px
-  );
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,200,255,0.015) 2px, rgba(0,200,255,0.015) 4px);
   pointer-events: none;
   z-index: 100;
 }
-
-/* Grid bg */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
-  background-image:
-    linear-gradient(rgba(0,200,255,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,200,255,0.04) 1px, transparent 1px);
+  background-image: linear-gradient(rgba(0,200,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.04) 1px, transparent 1px);
   background-size: 40px 40px;
   pointer-events: none;
   z-index: 0;
@@ -64,7 +54,7 @@ body::after {
 
 #app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 0 40px; }
 
-/* Header */
+/* 頂部欄 */
 .hdr {
   display: flex;
   align-items: center;
@@ -72,51 +62,21 @@ body::after {
   padding: 16px 20px 12px;
   border-bottom: 1px solid var(--border);
 }
-.hdr-logo {
-  font-family: var(--mono);
-  font-size: 13px;
-  color: var(--accent);
-  letter-spacing: .2em;
-  text-transform: uppercase;
-}
+.hdr-logo { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: .2em; text-transform: uppercase; }
 .hdr-logo span { color: var(--text3); }
-.hdr-ver {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text3);
-  letter-spacing: .1em;
-}
+.hdr-ver { font-family: var(--mono); font-size: 10px; color: var(--text3); letter-spacing: .1em; }
 
-/* Score bar */
-.scores {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  border-bottom: 1px solid var(--border);
-}
-.sc {
-  padding: 10px 6px;
-  text-align: center;
-  border-right: 1px solid var(--border);
-  position: relative;
-}
+/* 分數板 */
+.scores { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); }
+.sc { padding: 10px 6px; text-align: center; border-right: 1px solid var(--border); position: relative; }
 .sc:last-child { border-right: none; }
-.sc-n {
-  font-family: var(--mono);
-  font-size: 22px;
-  color: var(--accent);
-}
+.sc-n { font-family: var(--mono); font-size: 22px; color: var(--accent); }
 .sc-n.red { color: var(--ng); }
 .sc-n.gold { color: #ffcc00; }
 .sc-n.dim { color: var(--text2); }
-.sc-l {
-  font-size: 9px;
-  color: var(--text3);
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  margin-top: 2px;
-}
+.sc-l { font-size: 9px; color: var(--text3); letter-spacing: .1em; text-transform: uppercase; margin-top: 2px; }
 
-/* Question card */
+/* 題目卡片 */
 .qwrap { padding: 16px; }
 .qcard {
   background: var(--panel);
@@ -129,560 +89,263 @@ body::after {
   transition: border-color .25s;
 }
 .qcard::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: .6;
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: .6;
 }
 .qcard.ok { border-color: var(--ok); box-shadow: 0 0 20px rgba(0,255,179,.1); }
-.qcard.ok::before { background: linear-gradient(90deg, transparent, var(--ok), transparent); }
 .qcard.ng { border-color: var(--ng); box-shadow: 0 0 20px rgba(255,64,96,.1); }
-.qcard.ng::before { background: linear-gradient(90deg, transparent, var(--ng), transparent); }
 
-.q-eyebrow {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text3);
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-.chord-display {
-  font-family: var(--mono);
-  font-size: 58px;
-  color: var(--accent);
-  line-height: 1;
-  margin-bottom: 6px;
-  text-shadow: 0 0 30px rgba(0,200,255,.4);
-  letter-spacing: -1px;
-}
-.chord-type {
-  font-size: 13px;
-  color: var(--text2);
-  margin-bottom: 8px;
-  font-weight: 300;
-}
-.inv-tag {
-  display: inline-block;
-  font-family: var(--mono);
-  font-size: 10px;
-  padding: 2px 10px;
-  border: 1px solid var(--border);
-  color: var(--text3);
-  letter-spacing: .1em;
-  margin-bottom: 10px;
-}
-.hint-notes {
-  font-family: var(--mono);
-  font-size: 14px;
-  color: var(--accent2);
-  padding: 8px 16px;
-  border: 1px solid rgba(0,255,179,.2);
-  background: rgba(0,255,179,.05);
-  display: inline-block;
-  letter-spacing: .05em;
-  margin-top: 4px;
-}
+.chord-display { font-family: var(--mono); font-size: 58px; color: var(--accent); line-height: 1; margin-bottom: 6px; text-shadow: 0 0 30px rgba(0,200,255,.4); }
+.chord-type { font-size: 13px; color: var(--text2); margin-bottom: 8px; }
+.inv-tag { display: inline-block; font-family: var(--mono); font-size: 10px; padding: 2px 10px; border: 1px solid var(--border); color: var(--text3); margin-bottom: 10px; }
+.hint-notes { font-family: var(--mono); font-size: 14px; color: var(--accent2); padding: 8px 16px; border: 1px solid rgba(0,255,179,.2); background: rgba(0,255,179,.05); display: inline-block; }
 
-.fb-bar {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  padding: 10px;
-  font-family: var(--mono);
-  font-size: 13px;
-  text-align: center;
-  letter-spacing: .1em;
-  opacity: 0;
-  transition: opacity .2s;
-  pointer-events: none;
-}
+.fb-bar { position: absolute; bottom: 0; left: 0; right: 0; padding: 10px; font-family: var(--mono); font-size: 13px; text-align: center; opacity: 0; transition: opacity .2s; }
 .fb-bar.show { opacity: 1; }
 .fb-bar.ok { background: rgba(0,255,179,.15); color: var(--ok); }
 .fb-bar.ng { background: rgba(255,64,96,.15); color: var(--ng); }
 
-/* Note buttons — main interaction */
+/* 音符網格 */
 .notesec { padding: 0 16px 16px; }
-.notesec-label {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text3);
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.hint-btn {
-  font-family: var(--mono);
-  font-size: 10px;
-  padding: 4px 12px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text2);
-  cursor: pointer;
-  letter-spacing: .1em;
-  transition: all .15s;
-}
-.hint-btn:active { background: var(--border); }
-
-.note-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.note-grid.chromatic { grid-template-columns: repeat(6, 1fr); }
-
+.note-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 10px; }
 .nbtn {
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  font-family: var(--mono);
-  font-size: 13px;
-  color: var(--text2);
-  cursor: pointer;
-  transition: all .1s;
-  user-select: none;
-  -webkit-user-select: none;
-  position: relative;
-  overflow: hidden;
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 3px;
+  font-family: var(--mono); font-size: 13px; color: var(--text2); cursor: pointer;
 }
-.nbtn::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--accent);
-  opacity: 0;
-  transition: opacity .1s;
-}
-.nbtn:active::after { opacity: .1; }
-.nbtn.active {
-  background: rgba(0,200,255,.12);
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 0 8px rgba(0,200,255,.2);
-}
-.nbtn.correct {
-  background: rgba(0,255,179,.12);
-  border-color: var(--ok);
-  color: var(--ok);
-  box-shadow: 0 0 8px rgba(0,255,179,.2);
-}
-.nbtn.wrong {
-  background: rgba(255,64,96,.1);
-  border-color: var(--ng);
-  color: var(--ng);
-}
-.nbtn.missing {
-  border-style: dashed;
-  border-color: rgba(0,255,179,.3);
-  color: rgba(0,255,179,.4);
-}
+.nbtn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,200,255,.1); }
+.nbtn.correct { border-color: var(--ok); color: var(--ok); background: rgba(0,255,179,.1); }
+.nbtn.wrong { border-color: var(--ng); color: var(--ng); }
+.nbtn.missing { border-style: dashed; border-color: rgba(0,255,179,.3); }
 
-/* Pressed display */
-.pressed-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  min-height: 28px;
-  align-items: center;
-  margin-bottom: 10px;
-}
-.ppill {
-  font-family: var(--mono);
-  font-size: 11px;
-  padding: 3px 10px;
-  border-radius: 2px;
-}
-.ppill.g { background: rgba(0,255,179,.15); color: var(--ok); border: 1px solid rgba(0,255,179,.3); }
-.ppill.r { background: rgba(255,64,96,.12); color: var(--ng); border: 1px solid rgba(255,64,96,.3); }
-.ppill.m { background: transparent; color: var(--text3); border: 1px dashed var(--border); }
-
-/* Action buttons */
+/* 控制按鈕 */
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 16px 16px; }
-.abtn {
-  padding: 13px;
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text2);
-  cursor: pointer;
-  transition: all .15s;
-}
-.abtn:active { background: var(--bg3); }
-.abtn.primary {
-  border-color: var(--accent);
-  color: var(--accent);
-  position: relative;
-  overflow: hidden;
-}
-.abtn.primary::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(0,200,255,.08), transparent);
-}
-.abtn.primary:active { background: rgba(0,200,255,.1); }
+.abtn { padding: 13px; font-family: var(--mono); font-size: 12px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; }
+.abtn.primary { border-color: var(--accent); color: var(--accent); }
 
-/* Settings */
+/* 設定區 */
 .settings { margin: 0 16px 16px; border: 1px solid var(--border); }
-.stog {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  cursor: pointer;
-  user-select: none;
-}
-.stog-title {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text2);
-  letter-spacing: .15em;
-  text-transform: uppercase;
-}
-.stog-arr {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text3);
-  transition: transform .2s;
-}
-.stog-arr.open { transform: rotate(180deg); }
-.sbody {
-  display: none;
-  flex-direction: column;
-  gap: 14px;
-  padding: 14px;
-  border-top: 1px solid var(--border);
-}
+.stog { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; cursor: pointer; }
+.sbody { display: none; flex-direction: column; gap: 14px; padding: 14px; border-top: 1px solid var(--border); }
 .sbody.open { display: flex; }
-.slabel {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--text3);
-  letter-spacing: .2em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-.tgrid { display: flex; flex-wrap: wrap; gap: 5px; }
-.tbtn {
-  padding: 5px 10px;
-  font-family: var(--mono);
-  font-size: 10px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text3);
-  cursor: pointer;
-  letter-spacing: .05em;
-  transition: all .12s;
-}
-.tbtn.on {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(0,200,255,.08);
-}
-.igrid { display: flex; gap: 6px; }
-.ibtn {
-  flex: 1;
-  padding: 8px 4px;
-  font-family: var(--mono);
-  font-size: 10px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text3);
-  cursor: pointer;
-  letter-spacing: .05em;
-  text-align: center;
-  transition: all .12s;
-}
-.ibtn.on {
-  border-color: var(--accent2);
-  color: var(--accent2);
-  background: rgba(0,255,179,.06);
-}
-
-/* Corner decorations */
-.corner-tl, .corner-br {
-  position: absolute;
-  width: 12px; height: 12px;
-  pointer-events: none;
-}
-.corner-tl { top: 0; left: 0; border-top: 1px solid var(--accent); border-left: 1px solid var(--accent); }
-.corner-br { bottom: 0; right: 0; border-bottom: 1px solid var(--accent); border-right: 1px solid var(--accent); }
-
-@keyframes pulse-glow {
-  0%, 100% { opacity: .5; }
-  50% { opacity: 1; }
-}
-.glow { animation: pulse-glow 2s ease-in-out infinite; }
-
-@keyframes flash-ok {
-  0% { opacity: 0; }
-  30% { opacity: .15; }
-  100% { opacity: 0; }
-}
-.flash-ok { animation: flash-ok .5s ease-out forwards; }
+.tgrid, .igrid { display: flex; flex-wrap: wrap; gap: 5px; }
+.tbtn, .ibtn { padding: 5px 10px; font-family: var(--mono); font-size: 10px; border: 1px solid var(--border); background: transparent; color: var(--text3); cursor: pointer; }
+.tbtn.on, .ibtn.on { border-color: var(--accent); color: var(--accent); background: rgba(0,200,255,.08); }
 </style>
 </head>
 <body>
+
 <div id="app">
-
-<div class="hdr">
-  <div class="hdr-logo"><span>// </span>和弦練習系統<span> //</span></div>
-  <div class="hdr-ver glow">v2.0 · TOUCH</div>
-</div>
-
-<div class="scores">
-  <div class="sc"><div class="sc-n" id="sc">0</div><div class="sc-l">答對</div></div>
-  <div class="sc"><div class="sc-n red" id="sw">0</div><div class="sc-l">答錯</div></div>
-  <div class="sc"><div class="sc-n gold" id="ss">0</div><div class="sc-l">連續</div></div>
-  <div class="sc"><div class="sc-n dim" id="st">0</div><div class="sc-l">總題</div></div>
-</div>
-
-<div class="qwrap">
-  <div class="qcard" id="qcard">
-    <div class="corner-tl"></div>
-    <div class="corner-br"></div>
-    <div class="q-eyebrow">// PLAY THIS CHORD //</div>
-    <div class="chord-display" id="cname">C</div>
-    <div class="chord-type" id="ctype">大三和弦</div>
-    <div class="inv-tag" id="invtag" style="display:none"></div>
-    <div class="hint-notes" id="hnotes" style="visibility:hidden">C · E · G</div>
-    <div class="fb-bar" id="fb"></div>
+  <div class="hdr">
+    <div class="hdr-logo"><span>// </span>和弦練習系統<span> //</span></div>
+    <div class="hdr-ver">v2.1 · AUDIO</div>
   </div>
-</div>
 
-<div class="notesec">
-  <div class="notesec-label">
-    <span>// 選音作答</span>
-    <button class="hint-btn" id="hbtn">顯示提示</button>
+  <div class="scores">
+    <div class="sc"><div class="sc-n" id="sc">0</div><div class="sc-l">答對</div></div>
+    <div class="sc"><div class="sc-n red" id="sw">0</div><div class="sc-l">答錯</div></div>
+    <div class="sc"><div class="sc-n gold" id="ss">0</div><div class="sc-l">連續</div></div>
+    <div class="sc"><div class="sc-n dim" id="st">0</div><div class="sc-l">總題</div></div>
   </div>
-  <div class="note-grid" id="noteGrid"></div>
-  <div class="pressed-row" id="pressedRow"></div>
-</div>
 
-<div class="actions">
-  <button class="abtn" id="skipBtn">跳過</button>
-  <button class="abtn primary" id="nextBtn">下一題 ▶</button>
-</div>
-
-<div class="settings">
-  <div class="stog" id="stog">
-    <span class="stog-title">// 練習設定</span>
-    <span class="stog-arr" id="sarr">▼</span>
-  </div>
-  <div class="sbody" id="sbody">
-    <div>
-      <div class="slabel">和弦類型</div>
-      <div class="tgrid" id="tgrid"></div>
+  <div class="qwrap">
+    <div class="qcard" id="qcard">
+      <div class="chord-display" id="cname">C</div>
+      <div class="chord-type" id="ctype">大三和弦</div>
+      <div class="inv-tag" id="invtag" style="display:none"></div><br>
+      <div class="hint-notes" id="hnotes" style="visibility:hidden">C · E · G</div>
+      <div class="fb-bar" id="fb"></div>
     </div>
-    <div>
-      <div class="slabel">倒位</div>
+  </div>
+
+  <div class="notesec">
+    <div class="note-grid" id="noteGrid"></div>
+    <div id="pressedRow" style="min-height:20px"></div>
+  </div>
+
+  <div class="actions">
+    <button class="abtn" id="skipBtn">跳過</button>
+    <button class="abtn primary" id="nextBtn">下一題 ▶</button>
+  </div>
+
+  <div class="settings">
+    <div class="stog" id="stog"><span class="stog-title">// 練習設定</span><span>▼</span></div>
+    <div class="sbody" id="sbody">
+      <div class="tgrid" id="tgrid"></div>
       <div class="igrid" id="igrid"></div>
     </div>
   </div>
 </div>
 
-</div>
-
 <script>
+// --- 音訊引擎 ---
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+
+// 頻率表 (C4 ~ B4)
+const FREQS = [261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88];
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new AudioContext();
+}
+
+function playTone(idx) {
+  initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  
+  osc.type = 'triangle'; 
+  osc.frequency.setValueAtTime(FREQS[idx], audioCtx.currentTime);
+  
+  gain.gain.setValueAtTime(0, audioCtx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+  
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.8);
+}
+
+function playChord(notes) {
+  notes.forEach(n => playTone(n));
+}
+
+// --- 邏輯數據 ---
 const CT=[
   {id:'maj',  n:'大三',   s:'',      iv:[0,4,7]},
   {id:'min',  n:'小三',   s:'m',     iv:[0,3,7]},
-  {id:'aug',  n:'增三',   s:'aug',   iv:[0,4,8]},
-  {id:'dim',  n:'減三',   s:'dim',   iv:[0,3,6]},
-  {id:'sus2', n:'Sus2',   s:'sus2',  iv:[0,2,7]},
-  {id:'sus4', n:'Sus4',   s:'sus4',  iv:[0,5,7]},
-  {id:'maj7', n:'大七',   s:'maj7',  iv:[0,4,7,11]},
   {id:'dom7', n:'屬七',   s:'7',     iv:[0,4,7,10]},
-  {id:'min7', n:'小七',   s:'m7',    iv:[0,3,7,10]},
-  {id:'mMaj7',n:'小大七', s:'mM7',   iv:[0,3,7,11]},
-  {id:'dim7', n:'減七',   s:'dim7',  iv:[0,3,6,9]},
-  {id:'hdim7',n:'半減七', s:'ø7',    iv:[0,3,6,10]},
-  {id:'aug7', n:'增屬七', s:'aug7',  iv:[0,4,8,10]},
-  {id:'augM7',n:'增大七', s:'augM7', iv:[0,4,8,11]},
-  {id:'maj9', n:'大九',   s:'maj9',  iv:[0,4,7,11,14]},
-  {id:'dom9', n:'屬九',   s:'9',     iv:[0,4,7,10,14]},
-  {id:'min9', n:'小九',   s:'m9',    iv:[0,3,7,10,14]},
-  {id:'add9', n:'加九',   s:'add9',  iv:[0,4,7,14]},
-  {id:'maj6', n:'大六',   s:'6',     iv:[0,4,7,9]},
-  {id:'min6', n:'小六',   s:'m6',    iv:[0,3,7,9]},
+  {id:'maj7', n:'大七',   s:'maj7',  iv:[0,4,7,11]},
+  {id:'min7', n:'小七',   s:'m7',    iv:[0,3,7,10]}
 ];
 const DF=['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
 const IL=['原位','第一轉位','第二轉位','第三轉位'];
 
-let aT=new Set(['maj','min','dom7','maj7','min7']);
+let aT=new Set(['maj','min','dom7']);
 let aI=new Set([0]);
-let Q=null, pressed=new Set();
-let correct=0,wrong=0,streak=0,total=0,answered=false,ft=null;
+let Q=null, pressed=new Set(), answered=false;
+let correct=0, wrong=0, streak=0, total=0, ft=null;
 
-function cNotes(root,tid,inv){
-  const t=CT.find(x=>x.id===tid);
-  let c=t.iv.map(i=>(root+i)%12);
-  const n=Math.min(inv,c.length-1);
-  for(let i=0;i<n;i++) c.push(c.shift());
-  return c;
-}
-function qSet(){ return new Set(cNotes(Q.root,Q.tid,Q.inv)); }
-
-function newQ(){
-  answered=false; pressed.clear();
-  const tArr=[...aT], iArr=[...aI];
-  const tid=tArr[Math.floor(Math.random()*tArr.length)];
-  const root=Math.floor(Math.random()*12);
-  const maxI=CT.find(x=>x.id===tid).iv.length-1;
-  const vi=iArr.filter(i=>i<=maxI);
-  const inv=vi.length?vi[Math.floor(Math.random()*vi.length)]:0;
-  Q={root,tid,inv};
-  const t=CT.find(x=>x.id===tid);
-  const ns=cNotes(root,tid,inv).map(n=>DF[n]).join(' · ');
-  document.getElementById('cname').textContent=DF[root]+t.s;
-  document.getElementById('ctype').textContent=t.n+'和弦';
-  const it=document.getElementById('invtag');
-  if(inv>0){it.textContent=IL[inv];it.style.display='';}else it.style.display='none';
-  const hn=document.getElementById('hnotes');
-  hn.textContent=ns; hn.style.visibility='hidden';
-  document.getElementById('qcard').className='qcard';
-  const fb=document.getElementById('fb');
-  fb.className='fb-bar'; fb.textContent='';
-  renderNotes(); updPressed();
+function getChordNotes(root, tid, inv) {
+  const t = CT.find(x => x.id === tid);
+  let notes = t.iv.map(v => (root + v) % 12);
+  for (let i = 0; i < inv; i++) notes.push(notes.shift());
+  return notes;
 }
 
-function check(){
-  if(answered||!Q) return;
-  if(!pressed.size) return;
-  const tg=qSet();
-  const ok=pressed.size===tg.size&&[...tg].every(n=>pressed.has(n));
-  answered=true;
-  document.getElementById('hnotes').style.visibility='visible';
-  const fb=document.getElementById('fb');
-  if(ok){
-    correct++;streak++;
-    document.getElementById('qcard').className='qcard ok';
-    fb.textContent='✓ CORRECT'; fb.className='fb-bar show ok';
-    setTimeout(()=>{if(answered)newQ();},900);
-  } else {
-    wrong++;streak=0;
-    document.getElementById('qcard').className='qcard ng';
-    fb.textContent='✗ TRY AGAIN'; fb.className='fb-bar show ng';
-  }
+function newQ() {
+  answered = false; pressed.clear();
+  const tArr = [...aT], iArr = [...aI];
+  const tid = tArr[Math.floor(Math.random() * tArr.length)];
+  const root = Math.floor(Math.random() * 12);
+  const inv = iArr[Math.floor(Math.random() * iArr.length)];
+  
+  Q = { root, tid, inv };
+  const t = CT.find(x => x.id === tid);
+  
+  document.getElementById('cname').textContent = DF[root] + t.s;
+  document.getElementById('ctype').textContent = t.n + '和弦';
+  document.getElementById('invtag').style.display = inv > 0 ? 'inline-block' : 'none';
+  document.getElementById('invtag').textContent = IL[inv];
+  document.getElementById('hnotes').style.visibility = 'hidden';
+  document.getElementById('hnotes').textContent = getChordNotes(root, tid, inv).map(n => DF[n]).join(' · ');
+  document.getElementById('fb').className = 'fb-bar';
+  document.getElementById('qcard').className = 'qcard';
+  
+  renderNotes();
+}
+
+function check() {
+  if (answered || !pressed.size) return;
+  const target = new Set(getChordNotes(Q.root, Q.tid, Q.inv));
+  const isOk = pressed.size === target.size && [...target].every(n => pressed.has(n));
+  
+  answered = true;
   total++;
-  document.getElementById('sc').textContent=correct;
-  document.getElementById('sw').textContent=wrong;
-  document.getElementById('ss').textContent=streak;
-  document.getElementById('st').textContent=total;
-  renderNotes(); updPressed();
+  if (isOk) {
+    correct++; streak++;
+    document.getElementById('qcard').className = 'qcard ok';
+    document.getElementById('fb').textContent = '✓ CORRECT';
+    document.getElementById('fb').className = 'fb-bar show ok';
+    playChord([...target]); // 答對播放完整和弦
+    setTimeout(newQ, 1200);
+  } else {
+    wrong++; streak = 0;
+    document.getElementById('qcard').className = 'qcard ng';
+    document.getElementById('fb').textContent = '✗ TRY AGAIN';
+    document.getElementById('fb').className = 'fb-bar show ng';
+  }
+  
+  document.getElementById('sc').textContent = correct;
+  document.getElementById('sw').textContent = wrong;
+  document.getElementById('ss').textContent = streak;
+  document.getElementById('st').textContent = total;
+  document.getElementById('hnotes').style.visibility = 'visible';
+  renderNotes();
 }
 
-function renderNotes(){
-  const grid=document.getElementById('noteGrid');
-  grid.innerHTML='';
-  const tg=Q?qSet():new Set();
-  for(let i=0;i<12;i++){
-    const btn=document.createElement('button');
-    btn.className='nbtn';
-    btn.textContent=DF[i];
-    const isP=pressed.has(i), isTg=tg.has(i);
-    if(answered){
-      if(isTg&&isP) btn.classList.add('correct');
-      else if(isTg&&!isP) btn.classList.add('missing');
-      else if(!isTg&&isP) btn.classList.add('wrong');
-    } else {
-      if(isP) btn.classList.add('active');
+function renderNotes() {
+  const grid = document.getElementById('noteGrid');
+  grid.innerHTML = '';
+  const target = Q ? new Set(getChordNotes(Q.root, Q.tid, Q.inv)) : new Set();
+  
+  for (let i = 0; i < 12; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'nbtn';
+    btn.textContent = DF[i];
+    
+    if (answered) {
+      if (target.has(i) && pressed.has(i)) btn.classList.add('correct');
+      else if (target.has(i)) btn.classList.add('missing');
+      else if (pressed.has(i)) btn.classList.add('wrong');
+    } else if (pressed.has(i)) {
+      btn.classList.add('active');
     }
-    btn.addEventListener('pointerdown', e=>{
+    
+    btn.addEventListener('pointerdown', e => {
       e.preventDefault();
-      if(answered) return;
-      if(pressed.has(i)) pressed.delete(i);
+      if (answered) return;
+      
+      playTone(i); // 按下按鈕發出單音
+      
+      if (pressed.has(i)) pressed.delete(i);
       else pressed.add(i);
-      renderNotes(); updPressed();
+      
+      renderNotes();
       clearTimeout(ft);
-      ft=setTimeout(check, 400);
+      ft = setTimeout(check, 600);
     });
     grid.appendChild(btn);
   }
 }
 
-function updPressed(){
-  const el=document.getElementById('pressedRow');
-  el.innerHTML='';
-  if(!pressed.size) return;
-  const tg=Q?qSet():new Set();
-  [...pressed].sort((a,b)=>a-b).forEach(n=>{
-    const p=document.createElement('span');
-    p.className='ppill '+(tg.has(n)?'g':'r');
-    p.textContent=DF[n]; el.appendChild(p);
+// 初始化設定介面
+function setup() {
+  const tgrid = document.getElementById('tgrid');
+  CT.forEach(t => {
+    const b = document.createElement('button');
+    b.className = 'tbtn' + (aT.has(t.id) ? ' on' : '');
+    b.textContent = t.n;
+    b.onclick = () => {
+      if (aT.has(t.id) && aT.size > 1) aT.delete(t.id); else aT.add(t.id);
+      b.className = 'tbtn' + (aT.has(t.id) ? ' on' : '');
+    };
+    tgrid.appendChild(b);
   });
-  if(answered){
-    const tg2=qSet();
-    [...tg2].forEach(n=>{
-      if(!pressed.has(n)){
-        const p=document.createElement('span');
-        p.className='ppill m'; p.textContent=DF[n]+'?'; el.appendChild(p);
-      }
-    });
-  }
-}
 
-function buildTypes(){
-  const g=document.getElementById('tgrid'); g.innerHTML='';
-  CT.forEach(t=>{
-    const b=document.createElement('button');
-    b.className='tbtn'+(aT.has(t.id)?' on':'');
-    b.textContent=t.n;
-    b.addEventListener('pointerdown', e=>{
-      e.preventDefault();
-      if(aT.has(t.id)&&aT.size===1) return;
-      aT.has(t.id)?aT.delete(t.id):aT.add(t.id);
-      buildTypes();
-    });
-    g.appendChild(b);
-  });
-}
-function buildInv(){
-  const g=document.getElementById('igrid'); g.innerHTML='';
-  IL.forEach((l,i)=>{
-    const b=document.createElement('button');
-    b.className='ibtn'+(aI.has(i)?' on':'');
-    b.textContent=l;
-    b.addEventListener('pointerdown', e=>{
-      e.preventDefault();
-      if(aI.has(i)&&aI.size===1) return;
-      aI.has(i)?aI.delete(i):aI.add(i);
-      buildInv();
-    });
-    g.appendChild(b);
-  });
-}
-
-document.getElementById('stog').addEventListener('click',()=>{
-  document.getElementById('sbody').classList.toggle('open');
-  document.getElementById('sarr').classList.toggle('open');
-});
-document.getElementById('hbtn').addEventListener('click',()=>{
-  document.getElementById('hnotes').style.visibility='visible';
-});
-document.getElementById('nextBtn').addEventListener('click', newQ);
-document.getElementById('skipBtn').addEventListener('click',()=>{
-  if(!answered){wrong++;total++;streak=0;
-    document.getElementById('sw').textContent=wrong;
-    document.getElementById('ss').textContent=streak;
-    document.getElementById('st').textContent=total;
-  }
+  document.getElementById('stog').onclick = () => {
+    document.getElementById('sbody').classList.toggle('open');
+  };
+  document.getElementById('nextBtn').onclick = newQ;
+  document.getElementById('skipBtn').onclick = () => { if(!answered){wrong++; total++; streak=0;} newQ(); };
+  
   newQ();
-});
+}
 
-buildTypes(); buildInv(); newQ();
+setup();
 </script>
 </body>
 </html>
