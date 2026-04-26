@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>鋼琴和弦訓練系統 v4.0</title>
+<title>鋼琴和弦訓練系統 v4.5</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -26,20 +26,17 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
 
-/* 啟動遮罩 */
 #unlocker { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 #startBtn { padding: 20px 50px; background: transparent; color: var(--accent); border: 2px solid var(--accent); border-radius: 4px; font-family: var(--mono); font-size: 18px; cursor: pointer; }
 
 #app { max-width: 800px; margin: 0 auto; display: none; }
 
-/* 頂部資訊 */
 .hdr { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
 .scores { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); background: var(--bg2); }
 .sc { padding: 10px; text-align: center; border-right: 1px solid var(--border); }
 .sc-n { font-family: var(--mono); font-size: 20px; color: var(--accent); }
 .sc-l { font-size: 9px; color: var(--text3); text-transform: uppercase; }
 
-/* 題目卡 */
 .qwrap { padding: 15px; }
 .qcard { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; text-align: center; position: relative; }
 .qcard.ok { border-color: var(--ok); box-shadow: 0 0 15px rgba(0,255,179,0.15); }
@@ -47,44 +44,28 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 .chord-display { font-family: var(--mono); font-size: 48px; color: var(--accent); margin-bottom: 5px; }
 .hint-notes { font-family: var(--mono); font-size: 14px; color: var(--accent2); background: rgba(0,255,179,0.05); padding: 5px 15px; border-radius: 20px; display: inline-block; }
 
-/* 鋼琴鍵盤佈局 */
-.piano-container { padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+/* 鋼琴鍵盤樣式 */
+.piano-container { padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; }
 .octave { display: flex; position: relative; height: 160px; background: #000; padding: 2px; border-radius: 4px; }
 .key { position: relative; border: 1px solid #999; border-radius: 0 0 4px 4px; cursor: pointer; user-select: none; transition: background 0.1s; }
 .key.white { width: 35px; height: 150px; background: var(--white-key); z-index: 1; color: #333; font-size: 10px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; font-family: var(--mono); }
 .key.black { width: 22px; height: 95px; background: var(--black-key); z-index: 2; margin-left: -11px; margin-right: -11px; border-color: #000; color: #fff; font-size: 8px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; }
 
-/* 鍵盤狀態 */
-.key.active { 
-  background: var(--accent) !important; 
-  color: #fff !important; 
-  box-shadow: inset 0 -5px 0 rgba(0,0,0,0.2);
-}
-.key.correct { 
-  background: var(--ok) !important; 
-  color: var(--bg) !important;
-}
-.key.wrong { 
-  background: var(--ng) !important; 
-  color: #fff !important;
-  box-shadow: 0 0 10px var(--ng); /* 增加發光效果讓黑鍵按錯時更明顯 */
-}
-.key.missing { 
-  box-shadow: inset 0 0 0 3px var(--ok); /* 沒按到的音用內框標示 */
-  border: 2px dashed var(--ok) !important;
-}
+/* 狀態顏色 - 強化優先級與視覺效果 */
+.key.active { background: var(--accent) !important; color: #fff !important; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.2); }
+.key.correct { background: var(--ok) !important; color: var(--bg) !important; }
+.key.wrong { background: var(--ng) !important; color: #fff !important; box-shadow: 0 0 15px var(--ng) !important; z-index: 10; }
+.key.missing { border: 3px dashed var(--ok) !important; background: rgba(0, 255, 179, 0.05) !important; }
 
-/* 選項過濾器 */
 .filter-sec { padding: 15px; }
 .filter-title { font-family: var(--mono); font-size: 12px; color: var(--text3); margin-bottom: 10px; border-bottom: 1px solid var(--border); }
 .filter-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .f-btn { padding: 6px 12px; font-size: 12px; background: var(--bg3); border: 1px solid var(--border); color: var(--text2); border-radius: 4px; cursor: pointer; }
 .f-btn.on { border-color: var(--accent); color: var(--accent); background: rgba(0,200,255,0.1); }
 
-/* 操作按鈕 */
 .submit-area { padding: 10px 15px; }
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 15px; }
-.abtn { padding: 15px; font-family: var(--mono); border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; border-radius: 4px; }
+.abtn { padding: 15px; font-family: var(--mono); border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; border-radius: 4px; text-transform: uppercase; }
 .abtn.success { border-color: var(--accent2); color: var(--accent2); font-size: 18px; width: 100%; }
 </style>
 </head>
@@ -95,7 +76,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 </div>
 
 <div id="app">
-  <div class="hdr"><div class="hdr-logo">PIANO CHORD TRAINER v4.0</div></div>
+  <div class="hdr"><div class="hdr-logo">PIANO CHORD TRAINER v4.5</div></div>
 
   <div class="scores">
     <div class="sc"><div class="sc-n" id="sc">0</div><div class="sc-l">Correct</div></div>
@@ -107,7 +88,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
   <div class="qwrap">
     <div class="qcard" id="qcard">
       <div class="chord-display" id="cname">--</div>
-      <div id="ctype" style="font-size:14px; margin-bottom:10px; color:var(--text2);">載入中...</div>
+      <div id="ctype" style="font-size:14px; margin-bottom:10px; color:var(--text2);">Loading...</div>
       <div class="hint-notes" id="hnotes" style="visibility:hidden">HINT</div>
     </div>
   </div>
@@ -117,24 +98,24 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
     <div class="octave" id="octave1"></div>
   </div>
 
-  <div class="submit-area"><button class="abtn success" id="submitBtn">SUBMIT ANSWER</button></div>
+  <div class="submit-area"><button class="abtn success" id="submitBtn">CONFIRM & SUBMIT</button></div>
   <div class="actions">
     <button class="abtn" id="skipBtn">SKIP</button>
     <button class="abtn" id="nextBtn" style="border-color:var(--accent); color:var(--accent);">NEXT ▶</button>
   </div>
 
   <div class="filter-sec">
-    <div class="filter-title">// CHORD SELECTION (複選)</div>
+    <div class="filter-title">// CHORD TYPES (MULTIPLE SELECT)</div>
     <div class="filter-grid" id="filterGrid"></div>
   </div>
 </div>
 
 <script>
-// --- 音訊引擎 ---
+// --- 音訊模組 ---
 let audioCtx = null;
 const FREQS = [
-  261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88, // C4
-  523.25, 554.37, 587.33, 622.25, 659.25, 698.46, 739.99, 783.99, 830.61, 880.00, 932.33, 987.77  // C5
+  261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88,
+  523.25, 554.37, 587.33, 622.25, 659.25, 698.46, 739.99, 783.99, 830.61, 880.00, 932.33, 987.77
 ];
 const activeNodes = {};
 
@@ -166,7 +147,7 @@ function stopTone(idx) {
   delete activeNodes[idx];
 }
 
-// --- 數據與配置 ---
+// --- 核心邏輯 ---
 const CHORD_TYPES = [
   {id:'maj', n:'大三', iv:[0,4,7]},
   {id:'min', n:'小三', iv:[0,3,7]},
@@ -175,18 +156,16 @@ const CHORD_TYPES = [
   {id:'dom7', n:'屬七', iv:[0,4,7,10]},
   {id:'maj7', n:'大七', iv:[0,4,7,11]},
   {id:'min7', n:'小七', iv:[0,3,7,10]},
-  {id:'mMaj7', n:'小大七', iv:[0,3,7,11]},
   {id:'dim7', n:'減七', iv:[0,3,6,9]},
   {id:'hdim7', n:'半減七', iv:[0,3,6,10]}
 ];
-const NOTES_NAME = ['C','C#','D','D#','E','F','F#','G','G#','A','B♭','B'];
+const NOTES_NAME = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const LAYOUT = ['w','b','w','b','w','w','b','w','b','w','b','w'];
 
 let selectedTypes = new Set(['maj', 'min', 'dom7']);
 let Q = null, pressed = new Set(), answered = false;
 let correct=0, wrong=0, streak=0, total=0;
 
-// --- 鍵盤生成 ---
 function buildPiano() {
   for (let oct = 0; oct < 2; oct++) {
     const container = document.getElementById(`octave${oct}`);
@@ -197,11 +176,7 @@ function buildPiano() {
       key.className = `key ${type === 'w' ? 'white' : 'black'}`;
       key.dataset.idx = idx;
       key.innerHTML = `<span>${NOTES_NAME[i]}</span>`;
-      
-      key.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        handleKeyClick(idx);
-      });
+      key.addEventListener('pointerdown', e => { e.preventDefault(); handleKeyClick(idx); });
       container.appendChild(key);
     });
   }
@@ -210,45 +185,46 @@ function buildPiano() {
 function handleKeyClick(idx) {
   if (answered) return;
   initAudio();
-  if (pressed.has(idx)) {
-    pressed.delete(idx);
-    stopTone(idx);
-  } else {
-    pressed.add(idx);
-    startTone(idx);
-  }
+  if (pressed.has(idx)) { pressed.delete(idx); stopTone(idx); }
+  else { pressed.add(idx); startTone(idx); }
   updatePianoUI();
 }
 
 function updatePianoUI() {
+  const targetNames = new Set(Q ? Q.notes.map(n => n % 12) : []);
+  const pressedNames = new Set([...pressed].map(n => n % 12));
+
   document.querySelectorAll('.key').forEach(el => {
     const idx = parseInt(el.dataset.idx);
+    const noteNameIdx = idx % 12;
     el.classList.remove('active', 'correct', 'wrong', 'missing');
     
     if (answered) {
-      const target = new Set(Q.notes.map(n => n % 12)); // 僅比對音名
-      const isPressed = pressed.has(idx % 12);
-      const isTarget = target.has(idx % 12);
-      
-      if (isTarget && isPressed) el.classList.add('correct');
-      else if (isTarget && !isPressed) el.classList.add('missing');
-      else if (!isTarget && isPressed) el.classList.add('wrong');
+      const isTargetNote = targetNames.has(noteNameIdx);
+      const isPressed = pressed.has(idx);
+
+      if (isPressed) {
+        if (isTargetNote) el.classList.add('correct'); // 此位置按對了
+        else el.classList.add('wrong'); // 此位置按錯了
+      } else {
+        // 如果這個音名是答案，但使用者在整個鍵盤上都沒按它
+        if (isTargetNote && !pressedNames.has(noteNameIdx)) {
+          el.classList.add('missing');
+        }
+      }
     } else {
       if (pressed.has(idx)) el.classList.add('active');
     }
   });
 }
 
-// --- 題目控制 ---
 function newQ() {
   answered = false;
   Object.keys(activeNodes).forEach(stopTone);
   pressed.clear();
-  
   const pool = CHORD_TYPES.filter(t => selectedTypes.has(t.id));
   const t = pool[Math.floor(Math.random() * pool.length)];
   const root = Math.floor(Math.random() * 12);
-  
   Q = { root, type: t, notes: t.iv.map(v => (root + v)) };
   
   document.getElementById('cname').textContent = NOTES_NAME[root] + (t.id === 'maj' ? '' : t.id);
@@ -264,19 +240,12 @@ function check() {
   if (answered || !pressed.size) return;
   const targetNames = new Set(Q.notes.map(n => n % 12));
   const pressedNames = new Set([...pressed].map(n => n % 12));
-  
   const isOk = (pressedNames.size === targetNames.size) && [...targetNames].every(n => pressedNames.has(n));
   
   answered = true; total++;
   document.getElementById('submitBtn').style.display = 'none';
-  
-  if (isOk) {
-    correct++; streak++;
-    document.getElementById('qcard').className = 'qcard ok';
-  } else {
-    wrong++; streak = 0;
-    document.getElementById('qcard').className = 'qcard ng';
-  }
+  if (isOk) { correct++; streak++; document.getElementById('qcard').className = 'qcard ok'; }
+  else { wrong++; streak = 0; document.getElementById('qcard').className = 'qcard ng'; }
   
   document.getElementById('sc').textContent = correct;
   document.getElementById('sw').textContent = wrong;
@@ -286,7 +255,6 @@ function check() {
   updatePianoUI();
 }
 
-// --- 介面初始化 ---
 function initFilters() {
   const grid = document.getElementById('filterGrid');
   CHORD_TYPES.forEach(t => {
@@ -294,13 +262,8 @@ function initFilters() {
     btn.className = `f-btn ${selectedTypes.has(t.id) ? 'on' : ''}`;
     btn.textContent = t.n;
     btn.onclick = () => {
-      if (selectedTypes.has(t.id) && selectedTypes.size > 1) {
-        selectedTypes.delete(t.id);
-        btn.classList.remove('on');
-      } else {
-        selectedTypes.add(t.id);
-        btn.classList.add('on');
-      }
+      if (selectedTypes.has(t.id) && selectedTypes.size > 1) { selectedTypes.delete(t.id); btn.classList.remove('on'); }
+      else { selectedTypes.add(t.id); btn.classList.add('on'); }
     };
     grid.appendChild(btn);
   });
@@ -314,7 +277,6 @@ document.getElementById('startBtn').addEventListener('click', () => {
   initFilters();
   newQ();
 });
-
 document.getElementById('submitBtn').onclick = check;
 document.getElementById('nextBtn').onclick = newQ;
 document.getElementById('skipBtn').onclick = newQ;
