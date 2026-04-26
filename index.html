@@ -3,13 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>和弦練習系統 v3.0 - 專業模式</title>
+<title>鋼琴和弦訓練系統 v4.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg:        #050c14;
   --bg2:       #0a1520;
-  --bg3:       #0f1e2e;
   --panel:     #0d1c2b;
   --border:    #1a3a5c;
   --accent:    #00c8ff;
@@ -19,73 +18,70 @@
   --text3:     #2a5070;
   --ok:        #00ffb3;
   --ng:        #ff4060;
+  --white-key: #e0e0e0;
+  --black-key: #1a1a1a;
   --mono:      'Share Tech Mono', monospace;
   --sans:      'Noto Sans TC', sans-serif;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
-body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; overflow-x: hidden; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
 
 /* 啟動遮罩 */
-#unlocker {
-  position: fixed; inset: 0; background: var(--bg); z-index: 9999;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-}
-#startBtn {
-  padding: 20px 50px; background: transparent; color: var(--accent);
-  border: 2px solid var(--accent); border-radius: 4px; font-family: var(--mono);
-  font-size: 18px; cursor: pointer;
-}
+#unlocker { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+#startBtn { padding: 20px 50px; background: transparent; color: var(--accent); border: 2px solid var(--accent); border-radius: 4px; font-family: var(--mono); font-size: 18px; cursor: pointer; }
 
-#app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 0 40px; display: none; }
+#app { max-width: 800px; margin: 0 auto; display: none; }
 
+/* 頂部資訊 */
 .hdr { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
-.hdr-logo { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: .2em; }
+.scores { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); background: var(--bg2); }
+.sc { padding: 10px; text-align: center; border-right: 1px solid var(--border); }
+.sc-n { font-family: var(--mono); font-size: 20px; color: var(--accent); }
+.sc-l { font-size: 9px; color: var(--text3); text-transform: uppercase; }
 
-.scores { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); }
-.sc { padding: 10px 6px; text-align: center; border-right: 1px solid var(--border); }
-.sc-n { font-family: var(--mono); font-size: 22px; color: var(--accent); }
-.sc-l { font-size: 9px; color: var(--text3); text-transform: uppercase; margin-top: 2px; }
+/* 題目卡 */
+.qwrap { padding: 15px; }
+.qcard { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; text-align: center; position: relative; }
+.qcard.ok { border-color: var(--ok); box-shadow: 0 0 15px rgba(0,255,179,0.15); }
+.qcard.ng { border-color: var(--ng); box-shadow: 0 0 15px rgba(255,64,96,0.15); }
+.chord-display { font-family: var(--mono); font-size: 48px; color: var(--accent); margin-bottom: 5px; }
+.hint-notes { font-family: var(--mono); font-size: 14px; color: var(--accent2); background: rgba(0,255,179,0.05); padding: 5px 15px; border-radius: 20px; display: inline-block; }
 
-.qwrap { padding: 16px; }
-.qcard {
-  background: var(--panel); border: 1px solid var(--border); border-radius: 4px;
-  padding: 28px 20px 22px; text-align: center; position: relative; transition: all .25s;
-}
-.qcard.ok { border-color: var(--ok); box-shadow: 0 0 20px rgba(0,255,179,0.1); }
-.qcard.ng { border-color: var(--ng); box-shadow: 0 0 20px rgba(255,64,96,0.1); }
+/* 鋼琴鍵盤佈局 */
+.piano-container { padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+.octave { display: flex; position: relative; height: 160px; background: #000; padding: 2px; border-radius: 4px; }
+.key { position: relative; border: 1px solid #999; border-radius: 0 0 4px 4px; cursor: pointer; user-select: none; transition: background 0.1s; }
+.key.white { width: 35px; height: 150px; background: var(--white-key); z-index: 1; color: #333; font-size: 10px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; font-family: var(--mono); }
+.key.black { width: 22px; height: 95px; background: var(--black-key); z-index: 2; margin-left: -11px; margin-right: -11px; border-color: #000; color: #fff; font-size: 8px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; }
 
-.chord-display { font-family: var(--mono); font-size: 58px; color: var(--accent); line-height: 1; margin-bottom: 6px; }
-.hint-notes { font-family: var(--mono); font-size: 14px; color: var(--accent2); padding: 8px 16px; border: 1px solid rgba(0,255,179,0.2); background: rgba(0,255,179,0.05); display: inline-block; }
+/* 鍵盤狀態 */
+.key.active { background: var(--accent) !important; color: #fff; }
+.key.correct { background: var(--ok) !important; }
+.key.wrong { background: var(--ng) !important; }
+.key.missing { border: 2px dashed var(--ok); }
 
-.note-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 0 16px 16px; }
-.nbtn {
-  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-  background: var(--bg3); border: 1px solid var(--border); border-radius: 3px;
-  font-family: var(--mono); font-size: 13px; color: var(--text2); cursor: pointer; user-select: none;
-}
-.nbtn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,200,255,0.2); box-shadow: 0 0 10px rgba(0,200,255,0.2); }
-.nbtn.correct { border-color: var(--ok); color: var(--ok); background: rgba(0,255,179,0.1); }
-.nbtn.wrong { border-color: var(--ng); color: var(--ng); }
-.nbtn.missing { border-style: dashed; border-color: rgba(0,255,179,0.3); }
+/* 選項過濾器 */
+.filter-sec { padding: 15px; }
+.filter-title { font-family: var(--mono); font-size: 12px; color: var(--text3); margin-bottom: 10px; border-bottom: 1px solid var(--border); }
+.filter-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.f-btn { padding: 6px 12px; font-size: 12px; background: var(--bg3); border: 1px solid var(--border); color: var(--text2); border-radius: 4px; cursor: pointer; }
+.f-btn.on { border-color: var(--accent); color: var(--accent); background: rgba(0,200,255,0.1); }
 
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 16px 8px; }
-.submit-area { padding: 0 16px 16px; }
-.abtn { padding: 13px; font-family: var(--mono); font-size: 12px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; width: 100%; }
-.abtn.primary { border-color: var(--accent); color: var(--accent); font-weight: bold; }
-.abtn.success { border-color: var(--accent2); color: var(--accent2); font-size: 16px; letter-spacing: 2px; }
+/* 操作按鈕 */
+.submit-area { padding: 10px 15px; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 15px; }
+.abtn { padding: 15px; font-family: var(--mono); border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; border-radius: 4px; }
+.abtn.success { border-color: var(--accent2); color: var(--accent2); font-size: 18px; width: 100%; }
 </style>
 </head>
 <body>
 
 <div id="unlocker">
-  <button id="startBtn">START SYSTEM</button>
+  <button id="startBtn">START PIANO TRAINING</button>
 </div>
 
 <div id="app">
-  <div class="hdr">
-    <div class="hdr-logo">和弦練習系統 v3.0</div>
-  </div>
+  <div class="hdr"><div class="hdr-logo">PIANO CHORD TRAINER v4.0</div></div>
 
   <div class="scores">
     <div class="sc"><div class="sc-n" id="sc">0</div><div class="sc-l">Correct</div></div>
@@ -96,33 +92,36 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 
   <div class="qwrap">
     <div class="qcard" id="qcard">
-      <div class="chord-display" id="cname">C</div>
-      <div id="ctype" style="font-size:13px; margin-bottom:10px;">大三和弦</div>
-      <div class="hint-notes" id="hnotes" style="visibility:hidden">C · E · G</div>
+      <div class="chord-display" id="cname">--</div>
+      <div id="ctype" style="font-size:14px; margin-bottom:10px; color:var(--text2);">載入中...</div>
+      <div class="hint-notes" id="hnotes" style="visibility:hidden">HINT</div>
     </div>
   </div>
 
-  <div class="note-grid" id="noteGrid"></div>
-
-  <div class="submit-area">
-    <button class="abtn success" id="submitBtn">CONFIRM & SUBMIT</button>
+  <div class="piano-container">
+    <div class="octave" id="octave0"></div>
+    <div class="octave" id="octave1"></div>
   </div>
 
+  <div class="submit-area"><button class="abtn success" id="submitBtn">SUBMIT ANSWER</button></div>
   <div class="actions">
-    <button class="abtn" id="skipBtn">跳過</button>
-    <button class="abtn primary" id="nextBtn">下一題 ▶</button>
+    <button class="abtn" id="skipBtn">SKIP</button>
+    <button class="abtn" id="nextBtn" style="border-color:var(--accent); color:var(--accent);">NEXT ▶</button>
+  </div>
+
+  <div class="filter-sec">
+    <div class="filter-title">// CHORD SELECTION (複選)</div>
+    <div class="filter-grid" id="filterGrid"></div>
   </div>
 </div>
 
 <script>
-// --- 音訊引擎 (支援持續音) ---
+// --- 音訊引擎 ---
 let audioCtx = null;
 const FREQS = [
-  261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88,
-  523.25, 554.37, 587.33, 622.25, 659.25, 698.46, 739.99, 783.99, 830.61, 880.00, 932.33, 987.77
+  261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88, // C4
+  523.25, 554.37, 587.33, 622.25, 659.25, 698.46, 739.99, 783.99, 830.61, 880.00, 932.33, 987.77  // C5
 ];
-
-// 存放目前正在發聲的音點
 const activeNodes = {};
 
 function initAudio() {
@@ -132,88 +131,134 @@ function initAudio() {
 
 function startTone(idx) {
   initAudio();
-  if (activeNodes[idx]) return; // 已經在響了
-
+  if (activeNodes[idx]) return;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
-  
   osc.type = 'triangle';
-  const f = FREQS[idx] || (FREQS[idx % 12] * 2);
-  osc.frequency.setValueAtTime(f, audioCtx.currentTime);
-  
+  osc.frequency.setValueAtTime(FREQS[idx], audioCtx.currentTime);
   gain.gain.setValueAtTime(0, audioCtx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.05); // 稍微有淡入感
-  
+  gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
   osc.connect(gain);
   gain.connect(audioCtx.destination);
   osc.start();
-  
   activeNodes[idx] = { osc, gain };
 }
 
 function stopTone(idx) {
   if (!activeNodes[idx]) return;
   const { osc, gain } = activeNodes[idx];
-  const now = audioCtx.currentTime;
-  
-  gain.gain.cancelScheduledValues(now);
-  gain.gain.setValueAtTime(gain.gain.value, now);
-  gain.gain.linearRampToValueAtTime(0, now + 0.1); // 短暫淡出防止爆音
-  
-  setTimeout(() => {
-    osc.stop();
-    osc.disconnect();
-  }, 150);
-  
+  gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+  setTimeout(() => { osc.stop(); osc.disconnect(); }, 150);
   delete activeNodes[idx];
 }
 
-function stopAllTones() {
-  Object.keys(activeNodes).forEach(idx => stopTone(idx));
-}
-
-// --- 邏輯數據 ---
-const CT=[
-  {id:'maj', n:'大三', s:'', iv:[0,4,7]},
-  {id:'min', n:'小三', s:'m', iv:[0,3,7]},
-  {id:'dom7', n:'屬七', s:'7', iv:[0,4,7,10]},
-  {id:'maj7', n:'大七', s:'maj7', iv:[0,4,7,11]},
-  {id:'min7', n:'小七', s:'m7', iv:[0,3,7,10]}
+// --- 數據與配置 ---
+const CHORD_TYPES = [
+  {id:'maj', n:'大三', iv:[0,4,7]},
+  {id:'min', n:'小三', iv:[0,3,7]},
+  {id:'dim', n:'減三', iv:[0,3,6]},
+  {id:'aug', n:'增三', iv:[0,4,8]},
+  {id:'dom7', n:'屬七', iv:[0,4,7,10]},
+  {id:'maj7', n:'大七', iv:[0,4,7,11]},
+  {id:'min7', n:'小七', iv:[0,3,7,10]},
+  {id:'mMaj7', n:'小大七', iv:[0,3,7,11]},
+  {id:'dim7', n:'減七', iv:[0,3,6,9]},
+  {id:'hdim7', n:'半減七', iv:[0,3,6,10]}
 ];
-const DF=['C','C#','D','D#','E','F','F#','G','G#','A','B♭','B'];
-let Q=null, pressed=new Set(), answered=false;
+const NOTES_NAME = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const LAYOUT = ['w','b','w','b','w','w','b','w','b','w','b','w'];
+
+let selectedTypes = new Set(['maj', 'min', 'dom7']);
+let Q = null, pressed = new Set(), answered = false;
 let correct=0, wrong=0, streak=0, total=0;
 
+// --- 鍵盤生成 ---
+function buildPiano() {
+  for (let oct = 0; oct < 2; oct++) {
+    const container = document.getElementById(`octave${oct}`);
+    container.innerHTML = '';
+    LAYOUT.forEach((type, i) => {
+      const idx = oct * 12 + i;
+      const key = document.createElement('div');
+      key.className = `key ${type === 'w' ? 'white' : 'black'}`;
+      key.dataset.idx = idx;
+      key.innerHTML = `<span>${NOTES_NAME[i]}</span>`;
+      
+      key.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        handleKeyClick(idx);
+      });
+      container.appendChild(key);
+    });
+  }
+}
+
+function handleKeyClick(idx) {
+  if (answered) return;
+  initAudio();
+  if (pressed.has(idx)) {
+    pressed.delete(idx);
+    stopTone(idx);
+  } else {
+    pressed.add(idx);
+    startTone(idx);
+  }
+  updatePianoUI();
+}
+
+function updatePianoUI() {
+  document.querySelectorAll('.key').forEach(el => {
+    const idx = parseInt(el.dataset.idx);
+    el.classList.remove('active', 'correct', 'wrong', 'missing');
+    
+    if (answered) {
+      const target = new Set(Q.notes.map(n => n % 12)); // 僅比對音名
+      const isPressed = pressed.has(idx % 12);
+      const isTarget = target.has(idx % 12);
+      
+      if (isTarget && isPressed) el.classList.add('correct');
+      else if (isTarget && !isPressed) el.classList.add('missing');
+      else if (!isTarget && isPressed) el.classList.add('wrong');
+    } else {
+      if (pressed.has(idx)) el.classList.add('active');
+    }
+  });
+}
+
+// --- 題目控制 ---
 function newQ() {
-  answered = false; 
-  stopAllTones(); 
+  answered = false;
+  Object.keys(activeNodes).forEach(stopTone);
   pressed.clear();
-  const t = CT[Math.floor(Math.random()*CT.length)];
-  const root = Math.floor(Math.random()*12);
-  Q = { root, tid: t.id, t };
   
-  document.getElementById('cname').textContent = DF[root] + t.s;
+  const pool = CHORD_TYPES.filter(t => selectedTypes.has(t.id));
+  const t = pool[Math.floor(Math.random() * pool.length)];
+  const root = Math.floor(Math.random() * 12);
+  
+  Q = { root, type: t, notes: t.iv.map(v => (root + v)) };
+  
+  document.getElementById('cname').textContent = NOTES_NAME[root] + (t.id === 'maj' ? '' : t.id);
   document.getElementById('ctype').textContent = t.n + '和弦';
   document.getElementById('hnotes').style.visibility = 'hidden';
-  document.getElementById('hnotes').textContent = t.iv.map(v => DF[(root+v)%12]).join(' · ');
+  document.getElementById('hnotes').textContent = Q.notes.map(n => NOTES_NAME[n % 12]).join(' · ');
   document.getElementById('qcard').className = 'qcard';
   document.getElementById('submitBtn').style.display = 'block';
-  renderNotes();
+  updatePianoUI();
 }
 
 function check() {
   if (answered || !pressed.size) return;
-  const target = new Set(Q.t.iv.map(v => (Q.root+v)%12));
-  const isOk = (pressed.size === target.size) && [...target].every(n => pressed.has(n));
+  const targetNames = new Set(Q.notes.map(n => n % 12));
+  const pressedNames = new Set([...pressed].map(n => n % 12));
+  
+  const isOk = (pressedNames.size === targetNames.size) && [...targetNames].every(n => pressedNames.has(n));
   
   answered = true; total++;
   document.getElementById('submitBtn').style.display = 'none';
-
+  
   if (isOk) {
     correct++; streak++;
     document.getElementById('qcard').className = 'qcard ok';
-    // 答對時讓和弦鳴響一段時間後關閉
-    setTimeout(newQ, 2000);
   } else {
     wrong++; streak = 0;
     document.getElementById('qcard').className = 'qcard ng';
@@ -224,49 +269,35 @@ function check() {
   document.getElementById('ss').textContent = streak;
   document.getElementById('st').textContent = total;
   document.getElementById('hnotes').style.visibility = 'visible';
-  renderNotes();
+  updatePianoUI();
 }
 
-function renderNotes() {
-  const grid = document.getElementById('noteGrid');
-  grid.innerHTML = '';
-  const target = Q ? new Set(Q.t.iv.map(v => (Q.root+v)%12)) : new Set();
-  
-  for (let i = 0; i < 12; i++) {
+// --- 介面初始化 ---
+function initFilters() {
+  const grid = document.getElementById('filterGrid');
+  CHORD_TYPES.forEach(t => {
     const btn = document.createElement('button');
-    btn.className = 'nbtn';
-    btn.textContent = DF[i];
-    
-    if (answered) {
-      if (target.has(i) && pressed.has(i)) btn.classList.add('correct');
-      else if (target.has(i)) btn.classList.add('missing');
-      else if (pressed.has(i)) btn.classList.add('wrong');
-    } else if (pressed.has(i)) {
-      btn.classList.add('active');
-    }
-    
-    btn.addEventListener('pointerdown', e => {
-      e.preventDefault();
-      initAudio();
-      if (answered) return;
-      
-      if (pressed.has(i)) {
-        pressed.delete(i);
-        stopTone(i);
+    btn.className = `f-btn ${selectedTypes.has(t.id) ? 'on' : ''}`;
+    btn.textContent = t.n;
+    btn.onclick = () => {
+      if (selectedTypes.has(t.id) && selectedTypes.size > 1) {
+        selectedTypes.delete(t.id);
+        btn.classList.remove('on');
       } else {
-        pressed.add(i);
-        startTone(i);
+        selectedTypes.add(t.id);
+        btn.classList.add('on');
       }
-      renderNotes();
-    });
+    };
     grid.appendChild(btn);
-  }
+  });
 }
 
 document.getElementById('startBtn').addEventListener('click', () => {
   initAudio();
   document.getElementById('unlocker').style.display = 'none';
   document.getElementById('app').style.display = 'block';
+  buildPiano();
+  initFilters();
   newQ();
 });
 
