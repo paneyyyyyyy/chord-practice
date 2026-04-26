@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>和弦練習系統 v2.3 - 終極音效版</title>
+<title>和弦練習系統 v3.0 - 專業模式</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -34,13 +34,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 #startBtn {
   padding: 20px 50px; background: transparent; color: var(--accent);
   border: 2px solid var(--accent); border-radius: 4px; font-family: var(--mono);
-  font-size: 18px; cursor: pointer; transition: all 0.3s;
+  font-size: 18px; cursor: pointer;
 }
-#startBtn:active { background: rgba(0, 200, 255, 0.2); }
 
 #app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 0 0 40px; display: none; }
 
-/* UI 元素 */
 .hdr { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
 .hdr-logo { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: .2em; }
 
@@ -66,27 +64,27 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
   background: var(--bg3); border: 1px solid var(--border); border-radius: 3px;
   font-family: var(--mono); font-size: 13px; color: var(--text2); cursor: pointer; user-select: none;
 }
-.nbtn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,200,255,0.1); }
+.nbtn.active { border-color: var(--accent); color: var(--accent); background: rgba(0,200,255,0.2); box-shadow: 0 0 10px rgba(0,200,255,0.2); }
 .nbtn.correct { border-color: var(--ok); color: var(--ok); background: rgba(0,255,179,0.1); }
 .nbtn.wrong { border-color: var(--ng); color: var(--ng); }
 .nbtn.missing { border-style: dashed; border-color: rgba(0,255,179,0.3); }
 
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 16px 16px; }
-.abtn { padding: 13px; font-family: var(--mono); font-size: 12px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; }
-.abtn.primary { border-color: var(--accent); color: var(--accent); }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 16px 8px; }
+.submit-area { padding: 0 16px 16px; }
+.abtn { padding: 13px; font-family: var(--mono); font-size: 12px; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; width: 100%; }
+.abtn.primary { border-color: var(--accent); color: var(--accent); font-weight: bold; }
+.abtn.success { border-color: var(--accent2); color: var(--accent2); font-size: 16px; letter-spacing: 2px; }
 </style>
 </head>
 <body>
 
 <div id="unlocker">
-  <div style="font-family:var(--mono); color:var(--text3); margin-bottom:10px;">// SYSTEM READY //</div>
   <button id="startBtn">START SYSTEM</button>
-  <div style="font-size:10px; color:var(--text3); margin-top:20px;">請確保靜音開關已關閉</div>
 </div>
 
 <div id="app">
   <div class="hdr">
-    <div class="hdr-logo">和弦練習系統 v2.3</div>
+    <div class="hdr-logo">和弦練習系統 v3.0</div>
   </div>
 
   <div class="scores">
@@ -106,6 +104,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 
   <div class="note-grid" id="noteGrid"></div>
 
+  <div class="submit-area">
+    <button class="abtn success" id="submitBtn">CONFIRM & SUBMIT</button>
+  </div>
+
   <div class="actions">
     <button class="abtn" id="skipBtn">跳過</button>
     <button class="abtn primary" id="nextBtn">下一題 ▶</button>
@@ -113,61 +115,89 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 </div>
 
 <script>
-// --- 音訊引擎 ---
+// --- 音訊引擎 (支援持續音) ---
 let audioCtx = null;
 const FREQS = [
-  261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88, // C4-B4
-  523.25, 554.37, 587.33, 622.25, 659.25, 698.46, 739.99, 783.99, 830.61, 880.00, 932.33, 987.77  // C5-B5
+  261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88,
+  523.25, 554.37, 587.33, 622.25, 659.25, 698.46, 739.99, 783.99, 830.61, 880.00, 932.33, 987.77
 ];
 
+// 存放目前正在發聲的音點
+const activeNodes = {};
+
 function initAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
-function playTone(idx) {
-  if (!audioCtx) return;
+function startTone(idx) {
+  initAudio();
+  if (activeNodes[idx]) return; // 已經在響了
+
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
+  
   osc.type = 'triangle';
-  // 索引保護：確保不會抓到 undefined
   const f = FREQS[idx] || (FREQS[idx % 12] * 2);
   osc.frequency.setValueAtTime(f, audioCtx.currentTime);
   
   gain.gain.setValueAtTime(0, audioCtx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.4, audioCtx.currentTime + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+  gain.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.05); // 稍微有淡入感
   
   osc.connect(gain);
   gain.connect(audioCtx.destination);
   osc.start();
-  osc.stop(audioCtx.currentTime + 0.8);
+  
+  activeNodes[idx] = { osc, gain };
 }
 
-// --- 練習邏輯 ---
+function stopTone(idx) {
+  if (!activeNodes[idx]) return;
+  const { osc, gain } = activeNodes[idx];
+  const now = audioCtx.currentTime;
+  
+  gain.gain.cancelScheduledValues(now);
+  gain.gain.setValueAtTime(gain.gain.value, now);
+  gain.gain.linearRampToValueAtTime(0, now + 0.1); // 短暫淡出防止爆音
+  
+  setTimeout(() => {
+    osc.stop();
+    osc.disconnect();
+  }, 150);
+  
+  delete activeNodes[idx];
+}
+
+function stopAllTones() {
+  Object.keys(activeNodes).forEach(idx => stopTone(idx));
+}
+
+// --- 邏輯數據 ---
 const CT=[
   {id:'maj', n:'大三', s:'', iv:[0,4,7]},
   {id:'min', n:'小三', s:'m', iv:[0,3,7]},
-  {id:'dom7', n:'屬七', s:'7', iv:[0,4,7,10]}
+  {id:'dom7', n:'屬七', s:'7', iv:[0,4,7,10]},
+  {id:'maj7', n:'大七', s:'maj7', iv:[0,4,7,11]},
+  {id:'min7', n:'小七', s:'m7', iv:[0,3,7,10]}
 ];
-const DF=['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
+const DF=['C','C#','D','D#','E','F','F#','G','G#','A','B♭','B'];
 let Q=null, pressed=new Set(), answered=false;
-let correct=0, wrong=0, streak=0, total=0, ft=null;
+let correct=0, wrong=0, streak=0, total=0;
 
 function newQ() {
-  answered = false; pressed.clear();
+  answered = false; 
+  stopAllTones(); 
+  pressed.clear();
   const t = CT[Math.floor(Math.random()*CT.length)];
   const root = Math.floor(Math.random()*12);
   Q = { root, tid: t.id, t };
+  
   document.getElementById('cname').textContent = DF[root] + t.s;
   document.getElementById('ctype').textContent = t.n + '和弦';
   document.getElementById('hnotes').style.visibility = 'hidden';
   document.getElementById('hnotes').textContent = t.iv.map(v => DF[(root+v)%12]).join(' · ');
   document.getElementById('qcard').className = 'qcard';
+  document.getElementById('submitBtn').style.display = 'block';
   renderNotes();
 }
 
@@ -177,15 +207,18 @@ function check() {
   const isOk = (pressed.size === target.size) && [...target].every(n => pressed.has(n));
   
   answered = true; total++;
+  document.getElementById('submitBtn').style.display = 'none';
+
   if (isOk) {
     correct++; streak++;
     document.getElementById('qcard').className = 'qcard ok';
-    Q.t.iv.forEach((v, i) => setTimeout(() => playTone(Q.root + v), i*60));
-    setTimeout(newQ, 1200);
+    // 答對時讓和弦鳴響一段時間後關閉
+    setTimeout(newQ, 2000);
   } else {
     wrong++; streak = 0;
     document.getElementById('qcard').className = 'qcard ng';
   }
+  
   document.getElementById('sc').textContent = correct;
   document.getElementById('sw').textContent = wrong;
   document.getElementById('ss').textContent = streak;
@@ -198,41 +231,48 @@ function renderNotes() {
   const grid = document.getElementById('noteGrid');
   grid.innerHTML = '';
   const target = Q ? new Set(Q.t.iv.map(v => (Q.root+v)%12)) : new Set();
+  
   for (let i = 0; i < 12; i++) {
     const btn = document.createElement('button');
     btn.className = 'nbtn';
     btn.textContent = DF[i];
+    
     if (answered) {
       if (target.has(i) && pressed.has(i)) btn.classList.add('correct');
       else if (target.has(i)) btn.classList.add('missing');
       else if (pressed.has(i)) btn.classList.add('wrong');
-    } else if (pressed.has(i)) btn.classList.add('active');
+    } else if (pressed.has(i)) {
+      btn.classList.add('active');
+    }
     
     btn.addEventListener('pointerdown', e => {
       e.preventDefault();
-      initAudio(); 
+      initAudio();
       if (answered) return;
-      playTone(i);
-      if (pressed.has(i)) pressed.delete(i); else pressed.add(i);
+      
+      if (pressed.has(i)) {
+        pressed.delete(i);
+        stopTone(i);
+      } else {
+        pressed.add(i);
+        startTone(i);
+      }
       renderNotes();
-      clearTimeout(ft);
-      ft = setTimeout(check, 800);
     });
     grid.appendChild(btn);
   }
 }
 
-// 解鎖按鈕點擊
 document.getElementById('startBtn').addEventListener('click', () => {
   initAudio();
-  playTone(0); // 測試聲
   document.getElementById('unlocker').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   newQ();
 });
 
-document.getElementById('nextBtn').onclick = () => { initAudio(); newQ(); };
-document.getElementById('skipBtn').onclick = () => { initAudio(); newQ(); };
+document.getElementById('submitBtn').onclick = check;
+document.getElementById('nextBtn').onclick = newQ;
+document.getElementById('skipBtn').onclick = newQ;
 </script>
 </body>
 </html>
