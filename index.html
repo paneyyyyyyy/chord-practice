@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>鋼琴和弦訓練系統 v4.5</title>
+<title>鋼琴和弦大師 - 20題挑戰模式</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -26,13 +26,18 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
 
-#unlocker { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-#startBtn { padding: 20px 50px; background: transparent; color: var(--accent); border: 2px solid var(--accent); border-radius: 4px; font-family: var(--mono); font-size: 18px; cursor: pointer; }
+/* 遮罩通用樣式 */
+.overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+.abtn-big { padding: 20px 50px; background: transparent; color: var(--accent); border: 2px solid var(--accent); border-radius: 4px; font-family: var(--mono); font-size: 18px; cursor: pointer; text-transform: uppercase; }
 
 #app { max-width: 800px; margin: 0 auto; display: none; }
 
+/* 進度條 */
+.progress-container { width: 100%; height: 4px; background: var(--bg3); position: sticky; top: 0; z-index: 100; }
+#progressBar { height: 100%; width: 0%; background: var(--accent); transition: width 0.3s; }
+
 .hdr { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
-.scores { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--border); background: var(--bg2); }
+.scores { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--border); background: var(--bg2); }
 .sc { padding: 10px; text-align: center; border-right: 1px solid var(--border); }
 .sc-n { font-family: var(--mono); font-size: 20px; color: var(--accent); }
 .sc-l { font-size: 9px; color: var(--text3); text-transform: uppercase; }
@@ -47,78 +52,59 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 /* 鋼琴鍵盤樣式 */
 .piano-container { padding: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; }
 .octave { display: flex; position: relative; height: 160px; background: #000; padding: 2px; border-radius: 4px; }
-.key { position: relative; border: 1px solid #999; border-radius: 0 0 4px 4px; cursor: pointer; user-select: none; transition: background 0.1s; }
+.key { position: relative; border: 1px solid #999; border-radius: 0 0 4px 4px; cursor: pointer; user-select: none; }
 .key.white { width: 35px; height: 150px; background: var(--white-key); z-index: 1; color: #333; font-size: 10px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; font-family: var(--mono); }
 .key.black { width: 22px; height: 95px; background: var(--black-key); z-index: 2; margin-left: -11px; margin-right: -11px; border-color: #000; color: #fff; font-size: 8px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; }
 
-/* 狀態顏色 - 強化優先級與視覺效果 */
-/* --- 鍵盤狀態顏色修正 --- */
-
-/* 1. 選取中：亮藍色 (保持原本底色感) */
-.key.active { 
-  background-color: var(--accent) !important; 
-  color: #fff !important;
-  box-shadow: inset 0 -4px 0 rgba(0,0,0,0.2);
-}
-
-/* 2. 答對：實心綠色 */
-.key.correct { 
-  background-color: var(--ok) !important; 
-  color: var(--bg) !important; 
-}
-
-/* 3. 答錯：實心紅色 + 強烈紅光 */
-.key.wrong { 
-  background-color: var(--ng) !important; 
-  color: #fff !important;
-  box-shadow: 0 0 20px var(--ng) !important;
-  z-index: 10; /* 確保紅光在最上層 */
-}
-
-/* 4. 遺漏修正：保留原色，僅加上邊框與內發光 */
-.key.missing { 
-  border: 3px dashed var(--ok) !important;
-  box-shadow: inset 0 0 12px var(--ok) !important;
-  z-index: 5;
-}
-
-/* 確保黑鍵即使在遺漏狀態下，依然是黑底 */
-.key.black.missing {
-  background-color: var(--black-key) !important;
-}
-
-/* 確保白鍵即使在遺漏狀態下，依然是白底 */
-.key.white.missing {
-  background-color: var(--white-key) !important;
-}
-
-
-.filter-sec { padding: 15px; }
-.filter-title { font-family: var(--mono); font-size: 12px; color: var(--text3); margin-bottom: 10px; border-bottom: 1px solid var(--border); }
-.filter-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-.f-btn { padding: 6px 12px; font-size: 12px; background: var(--bg3); border: 1px solid var(--border); color: var(--text2); border-radius: 4px; cursor: pointer; }
-.f-btn.on { border-color: var(--accent); color: var(--accent); background: rgba(0,200,255,0.1); }
+/* 狀態顏色修正版 */
+.key.active { background-color: var(--accent) !important; color: #fff !important; box-shadow: inset 0 -4px 0 rgba(0,0,0,0.2); }
+.key.correct { background-color: var(--ok) !important; color: var(--bg) !important; }
+.key.wrong { background-color: var(--ng) !important; color: #fff !important; box-shadow: 0 0 20px var(--ng) !important; z-index: 10; }
+.key.missing { border: 3px dashed var(--ok) !important; box-shadow: inset 0 0 12px var(--ok) !important; z-index: 5; }
+.key.black.missing { background-color: var(--black-key) !important; }
+.key.white.missing { background-color: var(--white-key) !important; }
 
 .submit-area { padding: 10px 15px; }
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 15px; }
-.abtn { padding: 15px; font-family: var(--mono); border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; border-radius: 4px; text-transform: uppercase; }
-.abtn.success { border-color: var(--accent2); color: var(--accent2); font-size: 18px; width: 100%; }
+.abtn { padding: 15px; font-family: var(--mono); border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; border-radius: 4px; text-transform: uppercase; width: 100%; }
+.abtn.success { border-color: var(--accent2); color: var(--accent2); font-size: 18px; }
+
+.filter-sec { padding: 15px; }
+.filter-title { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-bottom: 8px; border-bottom: 1px solid var(--border); }
+.filter-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.f-btn { padding: 5px 10px; font-size: 11px; background: var(--bg2); border: 1px solid var(--border); color: var(--text2); border-radius: 4px; cursor: pointer; }
+.f-btn.on { border-color: var(--accent); color: var(--accent); background: rgba(0,200,255,0.1); }
+
+/* 結算頁面特定樣式 */
+.result-score { font-family: var(--mono); font-size: 72px; color: var(--accent2); margin: 20px 0; }
+.result-detail { color: var(--text2); margin-bottom: 30px; line-height: 1.6; }
 </style>
 </head>
 <body>
 
-<div id="unlocker">
-  <button id="startBtn">START PIANO TRAINING</button>
+<div id="unlocker" class="overlay">
+  <div style="font-family:var(--mono); color:var(--text3); margin-bottom:10px;">CHORD CHALLENGE MODE</div>
+  <button id="startBtn" class="abtn-big">START TRAINING</button>
+  <div style="font-size:12px; color:var(--text3); margin-top:20px;">共 20 題，每題 5 分</div>
+</div>
+
+<div id="resultPage" class="overlay" style="display:none;">
+  <h2 style="color:var(--accent); font-family:var(--mono);">MISSION COMPLETE</h2>
+  <div class="result-score" id="finalScore">0</div>
+  <div class="result-detail" id="finalDetail">
+    正確題數: 0 / 20<br>
+    正確率: 0%
+  </div>
+  <button onclick="location.reload()" class="abtn-big">RESTART挑战</button>
 </div>
 
 <div id="app">
-  <div class="hdr"><div class="hdr-logo">PIANO CHORD TRAINER v4.5</div></div>
+  <div class="progress-container"><div id="progressBar"></div></div>
+  <div class="hdr"><div class="hdr-logo" id="qProgress">QUESTION 1 / 20</div></div>
 
   <div class="scores">
     <div class="sc"><div class="sc-n" id="sc">0</div><div class="sc-l">Correct</div></div>
     <div class="sc"><div class="sc-n" id="sw" style="color:var(--ng)">0</div><div class="sc-l">Wrong</div></div>
-    <div class="sc"><div class="sc-n" id="ss" style="color:#ffcc00">0</div><div class="sc-l">Streak</div></div>
-    <div class="sc"><div class="sc-n" id="st" style="color:var(--text3)">0</div><div class="sc-l">Total</div></div>
+    <div class="sc"><div class="sc-n" id="totalScore" style="color:var(--accent2)">0</div><div class="sc-l">Total Score</div></div>
   </div>
 
   <div class="qwrap">
@@ -134,14 +120,13 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
     <div class="octave" id="octave1"></div>
   </div>
 
-  <div class="submit-area"><button class="abtn success" id="submitBtn">CONFIRM & SUBMIT</button></div>
-  <div class="actions">
-    <button class="abtn" id="skipBtn">SKIP</button>
-    <button class="abtn" id="nextBtn" style="border-color:var(--accent); color:var(--accent);">NEXT ▶</button>
+  <div class="submit-area">
+    <button class="abtn success" id="submitBtn">CONFIRM & SUBMIT</button>
+    <button class="abtn" id="nextBtn" style="display:none; border-color:var(--accent); color:var(--accent); margin-top:10px;">NEXT QUESTION ▶</button>
   </div>
 
   <div class="filter-sec">
-    <div class="filter-title">// CHORD TYPES (MULTIPLE SELECT)</div>
+    <div class="filter-title">//練習範圍 (下一題生效)</div>
     <div class="filter-grid" id="filterGrid"></div>
   </div>
 </div>
@@ -169,10 +154,8 @@ function startTone(idx) {
   osc.frequency.setValueAtTime(FREQS[idx], audioCtx.currentTime);
   gain.gain.setValueAtTime(0, audioCtx.currentTime);
   gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start();
-  activeNodes[idx] = { osc, gain };
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(); activeNodes[idx] = { osc, gain };
 }
 
 function stopTone(idx) {
@@ -185,14 +168,10 @@ function stopTone(idx) {
 
 // --- 核心邏輯 ---
 const CHORD_TYPES = [
-  {id:'maj', n:'大三', iv:[0,4,7]},
-  {id:'min', n:'小三', iv:[0,3,7]},
-  {id:'dim', n:'減三', iv:[0,3,6]},
-  {id:'aug', n:'增三', iv:[0,4,8]},
-  {id:'dom7', n:'屬七', iv:[0,4,7,10]},
-  {id:'maj7', n:'大七', iv:[0,4,7,11]},
-  {id:'min7', n:'小七', iv:[0,3,7,10]},
-  {id:'dim7', n:'減七', iv:[0,3,6,9]},
+  {id:'maj', n:'大三', iv:[0,4,7]}, {id:'min', n:'小三', iv:[0,3,7]},
+  {id:'dim', n:'減三', iv:[0,3,6]}, {id:'aug', n:'增三', iv:[0,4,8]},
+  {id:'dom7', n:'屬七', iv:[0,4,7,10]}, {id:'maj7', n:'大七', iv:[0,4,7,11]},
+  {id:'min7', n:'小七', iv:[0,3,7,10]}, {id:'dim7', n:'減七', iv:[0,3,6,9]},
   {id:'hdim7', n:'半減七', iv:[0,3,6,10]}
 ];
 const NOTES_NAME = ['C','C#','D','E♭','E','F','F#','G','G#','A','B♭','B'];
@@ -200,7 +179,8 @@ const LAYOUT = ['w','b','w','b','w','w','b','w','b','w','b','w'];
 
 let selectedTypes = new Set(['maj', 'min', 'dom7']);
 let Q = null, pressed = new Set(), answered = false;
-let correct=0, wrong=0, streak=0, total=0;
+let correctCount = 0, wrongCount = 0, currentRound = 0;
+const MAX_ROUNDS = 20;
 
 function buildPiano() {
   for (let oct = 0; oct < 2; oct++) {
@@ -229,35 +209,37 @@ function handleKeyClick(idx) {
 function updatePianoUI() {
   const targetNames = new Set(Q ? Q.notes.map(n => n % 12) : []);
   const pressedNames = new Set([...pressed].map(n => n % 12));
-
   document.querySelectorAll('.key').forEach(el => {
     const idx = parseInt(el.dataset.idx);
     const noteNameIdx = idx % 12;
     el.classList.remove('active', 'correct', 'wrong', 'missing');
-    
     if (answered) {
-      const isTargetNote = targetNames.has(noteNameIdx);
-      const isPressed = pressed.has(idx);
-
-      if (isPressed) {
-        if (isTargetNote) el.classList.add('correct'); // 此位置按對了
-        else el.classList.add('wrong'); // 此位置按錯了
-      } else {
-        // 如果這個音名是答案，但使用者在整個鍵盤上都沒按它
-        if (isTargetNote && !pressedNames.has(noteNameIdx)) {
-          el.classList.add('missing');
-        }
+      if (pressed.has(idx)) {
+        if (targetNames.has(noteNameIdx)) el.classList.add('correct');
+        else el.classList.add('wrong');
+      } else if (targetNames.has(noteNameIdx) && !pressedNames.has(noteNameIdx)) {
+        el.classList.add('missing');
       }
-    } else {
-      if (pressed.has(idx)) el.classList.add('active');
-    }
+    } else if (pressed.has(idx)) el.classList.add('active');
   });
 }
 
 function newQ() {
+  if (currentRound >= MAX_ROUNDS) {
+    showFinalResult();
+    return;
+  }
+  currentRound++;
   answered = false;
   Object.keys(activeNodes).forEach(stopTone);
   pressed.clear();
+  
+  // UI 更新
+  document.getElementById('qProgress').textContent = `QUESTION ${currentRound} / ${MAX_ROUNDS}`;
+  document.getElementById('progressBar').style.width = `${(currentRound/MAX_ROUNDS)*100}%`;
+  document.getElementById('submitBtn').style.display = 'block';
+  document.getElementById('nextBtn').style.display = 'none';
+
   const pool = CHORD_TYPES.filter(t => selectedTypes.has(t.id));
   const t = pool[Math.floor(Math.random() * pool.length)];
   const root = Math.floor(Math.random() * 12);
@@ -268,7 +250,6 @@ function newQ() {
   document.getElementById('hnotes').style.visibility = 'hidden';
   document.getElementById('hnotes').textContent = Q.notes.map(n => NOTES_NAME[n % 12]).join(' · ');
   document.getElementById('qcard').className = 'qcard';
-  document.getElementById('submitBtn').style.display = 'block';
   updatePianoUI();
 }
 
@@ -278,17 +259,36 @@ function check() {
   const pressedNames = new Set([...pressed].map(n => n % 12));
   const isOk = (pressedNames.size === targetNames.size) && [...targetNames].every(n => pressedNames.has(n));
   
-  answered = true; total++;
+  answered = true;
   document.getElementById('submitBtn').style.display = 'none';
-  if (isOk) { correct++; streak++; document.getElementById('qcard').className = 'qcard ok'; }
-  else { wrong++; streak = 0; document.getElementById('qcard').className = 'qcard ng'; }
+  document.getElementById('nextBtn').style.display = 'block';
+
+  if (isOk) {
+    correctCount++;
+    document.getElementById('qcard').className = 'qcard ok';
+  } else {
+    wrongCount++;
+    document.getElementById('qcard').className = 'qcard ng';
+  }
   
-  document.getElementById('sc').textContent = correct;
-  document.getElementById('sw').textContent = wrong;
-  document.getElementById('ss').textContent = streak;
-  document.getElementById('st').textContent = total;
+  document.getElementById('sc').textContent = correctCount;
+  document.getElementById('sw').textContent = wrongCount;
+  document.getElementById('totalScore').textContent = correctCount * 5;
   document.getElementById('hnotes').style.visibility = 'visible';
   updatePianoUI();
+}
+
+function showFinalResult() {
+  document.getElementById('app').style.display = 'none';
+  const resultPage = document.getElementById('resultPage');
+  resultPage.style.display = 'flex';
+  const finalScore = correctCount * 5;
+  document.getElementById('finalScore').textContent = finalScore;
+  document.getElementById('finalDetail').innerHTML = `
+    答對題數: ${correctCount} / ${MAX_ROUNDS}<br>
+    獲得分數: ${finalScore} 分 / 100<br>
+    正確率: ${(correctCount/MAX_ROUNDS)*100}%
+  `;
 }
 
 function initFilters() {
@@ -313,6 +313,7 @@ document.getElementById('startBtn').addEventListener('click', () => {
   initFilters();
   newQ();
 });
+
 document.getElementById('submitBtn').onclick = check;
 document.getElementById('nextBtn').onclick = newQ;
 document.getElementById('skipBtn').onclick = newQ;
