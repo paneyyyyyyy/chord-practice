@@ -179,48 +179,37 @@ function stopAllTones() {
   activeTones.clear();
 }
 
-function pluckGuitar(key, freq, volume = 0.35) {
+function pluckGuitar(freq, volume = 0.35) {
   initAudio();
   const t = audioCtx.currentTime;
-
-  // 建立一個短促的雜訊衝擊（模擬撥弦）
-  const bufferSize = audioCtx.sampleRate / freq;
-  const scriptNode = audioCtx.createBufferSource();
-  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) {
-    data[i] = Math.random() * 2 - 1; // 填充隨機雜訊
-  }
-  scriptNode.buffer = buffer;
-
-  // 核心：延遲補償（決定音高）
-  const delay = audioCtx.createDelay();
-  delay.delayTime.value = 1 / freq;
-
-  // 核心：低通濾波器（模擬弦的能量損耗，讓聲音變圓潤）
-  const lowpass = audioCtx.createBiquadFilter();
-  lowpass.type = "lowpass";
-  lowpass.frequency.value = freq * 3; // 調整這個數值可以改變明亮度
-
-  // 建立反饋迴路 (Feedback Loop)
-  const feedback = audioCtx.createGain();
-  feedback.gain.value = 0.992; // 決定音長，越接近 1 聲音撐越久
-
+  const osc1 = audioCtx.createOscillator();
+  osc1.type = 'sawtooth';
+  osc1.frequency.value = freq;
+  const osc2 = audioCtx.createOscillator();
+  osc2.type = 'triangle';
+  osc2.frequency.value = freq * 2.001;
+  const osc3 = audioCtx.createOscillator();
+  osc3.type = 'sine';
+  osc3.frequency.value = freq * 0.5;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(freq * 12, t);
+  filter.frequency.exponentialRampToValueAtTime(freq * 3, t + 0.4);
   const gain = audioCtx.createGain();
-  gain.gain.setValueAtTime(volume, t);
-  gain.gain.linearRampToValueAtTime(volume * 0.8, t + 10); // 緩慢衰減
-
-  // 連接：雜訊 -> 延遲 -> 濾波 -> 反饋 -> 回到延遲
-  scriptNode.connect(delay);
-  delay.connect(lowpass);
-  lowpass.connect(feedback);
-  feedback.connect(delay); // 形成環路
-  
-  lowpass.connect(gain);
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(volume, t + 0.008);
+  gain.gain.exponentialRampToValueAtTime(volume * 0.6, t + 0.05);
+  gain.gain.exponentialRampToValueAtTime(volume * 0.15, t + 0.4);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 2.2);
+  const g1 = audioCtx.createGain(); g1.gain.value = 0.5;
+  const g2 = audioCtx.createGain(); g2.gain.value = 0.3;
+  const g3 = audioCtx.createGain(); g3.gain.value = 0.2;
+  osc1.connect(g1); osc2.connect(g2); osc3.connect(g3);
+  g1.connect(filter); g2.connect(filter); g3.connect(filter);
+  filter.connect(gain);
   gain.connect(audioCtx.destination);
-
-  scriptNode.start(t);
-  activeTones.set(key, gain);
+  osc1.start(t); osc2.start(t); osc3.start(t);
+  osc1.stop(t + 2.5); osc2.stop(t + 2.5); osc3.stop(t + 2.5);
 }
 const CHORD_TYPES = [
   {id:'maj',   n:'大三',  iv:[0,4,7]},
