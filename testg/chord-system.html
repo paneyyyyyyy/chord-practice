@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Chord Testing System</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #050c14;
+  --bg2:       #0a1520;
+  --panel:     #0d1c2b;
+  --border:    #1a3a5c;
+  --accent:    #00c8ff;
+  --accent2:   #00ffb3;
+  --text:      #c8dff0;
+  --text2:     #6a9bbf;
+  --text3:     #2a5070;
+  --ok:        #00ffb3;
+  --ng:        #ff4060;
+  --mono:      'Share Tech Mono', monospace;
+  --sans:      'Noto Sans TC', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
+
+.overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+.abtn-big { padding: 20px 50px; background: transparent; color: var(--accent); border: 2px solid var(--accent); border-radius: 4px; font-family: var(--mono); font-size: 18px; cursor: pointer; text-transform: uppercase; }
+
+#app { max-width: 800px; margin: 0 auto; display: none; }
+
+.progress-container { width: 100%; height: 4px; background: var(--bg2); position: sticky; top: 0; z-index: 100; }
+#progressBar { height: 100%; width: 0%; background: var(--accent); transition: width 0.3s; }
+
+.hdr { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.scores { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid var(--border); background: var(--bg2); }
+.sc { padding: 10px; text-align: center; border-right: 1px solid var(--border); }
+.sc-n { font-family: var(--mono); font-size: 20px; color: var(--accent); }
+.sc-l { font-size: 9px; color: var(--text3); text-transform: uppercase; }
+
+.qwrap { padding: 15px; }
+.qcard { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 20px; text-align: center; position: relative; }
+.qcard.ok { border-color: var(--ok); box-shadow: 0 0 15px rgba(0,255,179,0.15); }
+.qcard.ng { border-color: var(--ng); box-shadow: 0 0 15px rgba(255,64,96,0.15); }
+
+/* 和弦名稱顯示：支援斜線轉位格式 */
+.chord-display { font-family: var(--mono); font-size: 48px; color: var(--accent); margin-bottom: 5px; line-height: 1; }
+.chord-slash { font-size: 36px; color: var(--text3); margin: 0 2px; }
+.chord-bass { font-size: 36px; color: var(--accent2); }
+
+/* 轉位標籤 */
+.inversion-badge {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent2);
+  border: 1px solid var(--accent2);
+  border-radius: 3px;
+  padding: 2px 8px;
+  margin-bottom: 8px;
+  opacity: 0.8;
+  letter-spacing: 1px;
+}
+
+.hint-notes { font-family: var(--mono); font-size: 14px; color: var(--accent2); background: rgba(0,255,179,0.05); padding: 5px 15px; border-radius: 20px; display: inline-block; }
+
+/* 吉他指板樣式 */
+.guitar-container { padding: 10px 15px; overflow-x: auto; }
+.fret-header { display: flex; align-items: center; margin-bottom: 2px; padding-left: 38px; }
+.fret-label { font-family: var(--mono); font-size: 10px; color: var(--text3); text-align: center; flex-shrink: 0; }
+.string-row { display: flex; align-items: center; margin-bottom: 2px; position: relative; }
+.string-name-label { width: 32px; font-family: var(--mono); font-size: 11px; color: var(--text2); text-align: right; padding-right: 6px; flex-shrink: 0; }
+.nut { width: 6px; align-self: stretch; background: var(--text2); opacity: 0.5; flex-shrink: 0; border-radius: 1px; }
+.fret-cell { position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-right: 2px solid var(--border); }
+.fret-cell:last-child { border-right: none; }
+.string-wire { position: absolute; top: 50%; left: 0; right: 0; pointer-events: none; background: var(--text2); transform: translateY(-50%); }
+.fret-dot-marker { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: var(--text3); pointer-events: none; }
+.finger-dot { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 500; position: relative; z-index: 2; transition: background 0.1s; cursor: pointer; flex-shrink: 0; }
+.finger-dot.state-empty { background: transparent; color: transparent; }
+.finger-dot.state-active { background: var(--accent); color: var(--bg); }
+.finger-dot.state-correct { background: var(--ok); color: var(--bg); }
+.finger-dot.state-wrong { background: var(--ng); color: #fff; }
+.finger-dot.state-missing { background: transparent; border: 2px dashed var(--ok); color: var(--ok); }
+.finger-dot.bass-mark::after { content: '▼'; position: absolute; top: -14px; left: 50%; transform: translateX(-50%); font-size: 10px; color: var(--ng); }
+
+.submit-area { padding: 10px 15px; }
+.abtn { padding: 15px; font-family: var(--mono); border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; border-radius: 4px; text-transform: uppercase; width: 100%; }
+.abtn.success { border-color: var(--accent2); color: var(--accent2); font-size: 18px; }
+
+.filter-sec { padding: 15px; }
+.filter-title { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.filter-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.f-btn { padding: 5px 10px; font-size: 11px; background: var(--bg2); border: 1px solid var(--border); color: var(--text2); border-radius: 4px; cursor: pointer; }
+.f-btn.on { border-color: var(--accent); color: var(--accent); background: rgba(0,200,255,0.1); }
+
+/* 轉位開關區塊 */
+.inversion-sec {
+  padding: 15px;
+  border-top: 1px solid var(--border);
+}
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 6px;
+}
+.toggle-wrap {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.toggle-wrap input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: background 0.3s, border-color 0.3s;
+}
+.toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: var(--text3);
+  border-radius: 50%;
+  transition: left 0.3s, background 0.3s;
+}
+.toggle-wrap input:checked ~ .toggle-track {
+  background: rgba(0,200,255,0.2);
+  border-color: var(--accent);
+}
+.toggle-wrap input:checked ~ .toggle-thumb {
+  left: 24px;
+  background: var(--accent);
+}
+.toggle-label {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text2);
+  transition: color 0.3s;
+}
+.toggle-label.active { color: var(--accent); }
+.inversion-desc { font-size: 11px; color: var(--text3); line-height: 1.6; padding-left: 58px; }
+.inversion-example {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 4px;
+  padding-left: 58px;
+}
+.inversion-example span { color: var(--accent2); }
+
+/* 結算頁面 */
+.result-score { font-family: var(--mono); font-size: 72px; color: var(--accent2); margin: 20px 0; }
+.result-detail { color: var(--text2); margin-bottom: 30px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div id="unlocker" class="overlay">
+  <div style="font-family:var(--mono); color:var(--text3); margin-bottom:10px;">CHORD CHALLENGE MODE</div>
+  <button id="startBtn" class="abtn-big">START TRAINING</button>
+  <div style="font-size:12px; color:var(--text3); margin-top:20px;">Total 20 questions, 5 points each</div>
+</div>
+
+<div id="resultPage" class="overlay" style="display:none;">
+  <h2 style="color:var(--accent); font-family:var(--mono);">MISSION COMPLETE</h2>
+  <div class="result-score" id="finalScore">0</div>
+  <div class="result-detail" id="finalDetail">
+    Correct answers: 0 / 20<br>
+    Accuracy rate: 0%
+  </div>
+  <button onclick="location.reload()" class="abtn-big">RESTART</button>
+</div>
+
+<div id="app">
+  <div class="progress-container"><div id="progressBar"></div></div>
+  <div class="hdr"><div class="hdr-logo" id="qProgress">QUESTION 1 / 20</div></div>
+
+  <div class="scores">
+    <div class="sc"><div class="sc-n" id="sc">0</div><div class="sc-l">Correct</div></div>
+    <div class="sc"><div class="sc-n" id="sw" style="color:var(--ng)">0</div><div class="sc-l">Wrong</div></div>
+    <div class="sc"><div class="sc-n" id="totalScore" style="color:var(--accent2)">0</div><div class="sc-l">Total Score</div></div>
+  </div>
+
+  <div class="qwrap">
+    <div class="qcard" id="qcard">
+      <!-- 轉位標籤（根音位置時隱藏） -->
+      <div id="inversionBadge" class="inversion-badge" style="visibility:hidden;">ROOT POSITION</div>
+      <!-- 和弦名稱（支援斜線格式） -->
+      <div class="chord-display" id="cname">--</div>
+      <div id="ctype" style="font-size:14px; margin-bottom:10px; color:var(--text2);">Loading...</div>
+      <div class="hint-notes" id="hnotes" style="visibility:hidden">HINT</div>
+    </div>
+  </div>
+
+  <div class="guitar-container" id="guitarContainer"></div>
+
+  <div class="submit-area">
+    <button class="abtn success" id="submitBtn">CONFIRM & SUBMIT</button>
+    <button class="abtn" id="nextBtn" style="display:none; border-color:var(--accent); color:var(--accent); margin-top:10px;">NEXT QUESTION ▶</button>
+  </div>
+
+  <!-- 和弦類型篩選 -->
+  <div class="filter-sec">
+    <div class="filter-title">//練習範圍 (下一題生效)</div>
+    <div class="filter-grid" id="filterGrid"></div>
+  </div>
+
+  <!-- 轉位開關 -->
+  <div class="inversion-sec">
+    <div class="filter-title">//轉位模式 (下一題生效)</div>
+    <div class="toggle-row">
+      <label class="toggle-wrap">
+        <input type="checkbox" id="inversionToggle">
+        <span class="toggle-track"></span>
+        <span class="toggle-thumb"></span>
+      </label>
+      <span class="toggle-label" id="toggleLabel">轉位模式：OFF</span>
+    </div>
+    <div class="inversion-desc">開啟後題目將隨機出現各種轉位，以斜線標記法顯示最低音。</div>
+    <div class="inversion-example">
+      例：<span>C</span>（根音）　<span>C/E</span>（第一轉位）　<span>C/G</span>（第二轉位）
+    </div>
+  </div>
+</div>
+
+<script>
+// --- 音訊模組（吉他撥弦音色）---
+let audioCtx = null;
+
+// 鋼琴鍵盤用的頻率表（兩個八度，C4 起）
+const FREQS = [
+  261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 369.99, 392.00, 415.30, 440.00, 466.16, 493.88,
+  523.25, 554.37, 587.33, 622.25, 659.25, 698.46, 739.99, 783.99, 830.61, 880.00, 932.33, 987.77
+];
+const activeNodes = {};
+
+function initAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+// 吉他撥弦合成：attack 極短 + 指數衰減 + 諧波疊加
+function pluckGuitar(freq, volume = 0.35) {
+  initAudio();
+  const t = audioCtx.currentTime;
+
+  // 主音 oscillator（sawtooth 提供豐富諧波）
+  const osc1 = audioCtx.createOscillator();
+  osc1.type = 'sawtooth';
+  osc1.frequency.value = freq;
+
+  // 加入輕微 detune 的 triangle（模擬弦的泛音特性）
+  const osc2 = audioCtx.createOscillator();
+  osc2.type = 'triangle';
+  osc2.frequency.value = freq * 2.001; // 八度 + 微幅 detune
+
+  // 低頻 body 共鳴
+  const osc3 = audioCtx.createOscillator();
+  osc3.type = 'sine';
+  osc3.frequency.value = freq * 0.5;
+
+  // 低通濾波器：模擬弦的高頻快速衰減
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = freq * 8;
+  filter.Q.value = 0.8;
+  // 濾波器頻率也隨時間降低（撥弦後高頻消退）
+  filter.frequency.setValueAtTime(freq * 12, t);
+  filter.frequency.exponentialRampToValueAtTime(freq * 3, t + 0.4);
+
+  // 音量 envelope：極快 attack + 指數 decay（撥弦感）
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0, t);
+  gain.gain.linearRampToValueAtTime(volume, t + 0.008);      // 8ms attack
+  gain.gain.exponentialRampToValueAtTime(volume * 0.6, t + 0.05);
+  gain.gain.exponentialRampToValueAtTime(volume * 0.15, t + 0.4);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 2.2);   // 約 2 秒 sustain
+
+  // gain 各 osc 混音比例
+  const g1 = audioCtx.createGain(); g1.gain.value = 0.5;
+  const g2 = audioCtx.createGain(); g2.gain.value = 0.3;
+  const g3 = audioCtx.createGain(); g3.gain.value = 0.2;
+
+  osc1.connect(g1); osc2.connect(g2); osc3.connect(g3);
+  g1.connect(filter); g2.connect(filter); g3.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc1.start(t); osc2.start(t); osc3.start(t);
+  osc1.stop(t + 2.5); osc2.stop(t + 2.5); osc3.stop(t + 2.5);
+}
+
+// 鋼琴鍵盤用的 startTone / stopTone（保留相容性）
+function startTone(idx) {
+  if (activeNodes[idx]) return;
+  pluckGuitar(FREQS[idx]);
+  // 建立一個空的佔位，避免重複觸發
+  activeNodes[idx] = true;
+  setTimeout(() => { delete activeNodes[idx]; }, 2500);
+}
+
+function stopTone(idx) {
+  // 吉他音自然 decay，不需要主動停止
+  delete activeNodes[idx];
+}
+
+// --- 核心資料 ---
+const CHORD_TYPES = [
+  {id:'maj',   n:'大三',  iv:[0,4,7]},
+  {id:'min',   n:'小三',  iv:[0,3,7]},
+  {id:'dim',   n:'減三',  iv:[0,3,6]},
+  {id:'aug',   n:'增三',  iv:[0,4,8]},
+  {id:'7',     n:'屬七',  iv:[0,4,7,10]},
+  {id:'maj7',  n:'大七',  iv:[0,4,7,11]},
+  {id:'min7',  n:'小七',  iv:[0,3,7,10]},
+  {id:'dim7',  n:'減七',  iv:[0,3,6,9]},
+  {id:'hdim7', n:'半減七', iv:[0,3,6,10]}
+];
+
+const NOTES_NAME = ['C','C#','D','E♭','E','F','F#','G','G#','A','B♭','B'];
+const INVERSION_LABELS = ['ROOT POSITION', '1ST INVERSION', '2ND INVERSION', '3RD INVERSION'];
+
+let selectedTypes = new Set(['maj', 'min', '7']);
+let inversionMode = false;
+let Q = null, pressed = new Set(), answered = false;
+let correctCount = 0, wrongCount = 0, currentRound = 0;
+let showBassMark = false; // 轉位題且和弦音符全對時才顯示 bass note 三角
+const MAX_ROUNDS = 20;
+
+// --- 吉他常數 ---
+const OPEN_NOTES   = [4, 9, 2, 7, 11, 4]; // E A D G B e (mod12), 第6弦→第1弦
+const STRING_NAMES = ['E','A','D','G','B','e'];
+const FRET_COUNT   = 5;
+const MARKER_FRETS = new Set([3, 5]);
+// 各弦粗細（第6弦最粗）
+const STRING_THICKNESS = [2.8, 2.2, 1.8, 1.4, 1.1, 0.8];
+// 吉他各弦基礎八度頻率（E2 A2 D3 G3 B3 E4）
+const GUITAR_BASE_FREQS = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
+
+// pressed: Map<string, Set<fret>>  key = string index (0=E low)
+let gPressed = new Map();
+for (let s = 0; s < 6; s++) gPressed.set(s, new Set());
+
+function noteAt(s, f) { return (OPEN_NOTES[s] + f) % 12; }
+function freqAt(s, f) { return GUITAR_BASE_FREQS[s] * Math.pow(2, f / 12); }
+
+// --- 吉他指板建構 ---
+function buildGuitar() {
+  const container = document.getElementById('guitarContainer');
+  container.innerHTML = '';
+
+  // 琴格編號 header
+  const header = document.createElement('div');
+  header.className = 'fret-header';
+  // 空弦 label
+  const openLbl = document.createElement('div');
+  openLbl.className = 'fret-label';
+  openLbl.style.width = '42px';
+  openLbl.textContent = 'open';
+  header.appendChild(openLbl);
+  for (let f = 1; f <= FRET_COUNT; f++) {
+    const lbl = document.createElement('div');
+    lbl.className = 'fret-label';
+    lbl.style.width = '52px';
+    lbl.textContent = f;
+    header.appendChild(lbl);
+  }
+  container.appendChild(header);
+
+  for (let s = 0; s < 6; s++) {
+    const row = document.createElement('div');
+    row.className = 'string-row';
+
+    const nameLbl = document.createElement('div');
+    nameLbl.className = 'string-name-label';
+    nameLbl.textContent = STRING_NAMES[s];
+    row.appendChild(nameLbl);
+
+    const nut = document.createElement('div');
+    nut.className = 'nut';
+    row.appendChild(nut);
+
+    for (let f = 0; f <= FRET_COUNT; f++) {
+      const cell = document.createElement('div');
+      cell.className = 'fret-cell';
+      cell.style.width = f === 0 ? '42px' : '52px';
+      cell.style.height = '44px';
+
+      // 弦線
+      const wire = document.createElement('div');
+      wire.className = 'string-wire';
+      wire.style.height = STRING_THICKNESS[s] + 'px';
+      wire.style.opacity = '0.4';
+      cell.appendChild(wire);
+
+      // 指板標記點（第3、5格，在第5弦顯示）
+      if (MARKER_FRETS.has(f) && s === 5) {
+        const m = document.createElement('div');
+        m.className = 'fret-dot-marker';
+        cell.appendChild(m);
+      }
+
+      // 按弦圓點
+      const dot = document.createElement('div');
+      dot.className = 'finger-dot state-empty';
+      dot.id = `gdot-${s}-${f}`;
+      dot.style.width = '28px';
+      dot.style.height = '28px';
+      dot.style.fontSize = '10px';
+      cell.appendChild(dot);
+
+      cell.addEventListener('pointerdown', e => { e.preventDefault(); handleGuitarClick(s, f); });
+      row.appendChild(cell);
+    }
+    container.appendChild(row);
+  }
+}
+
+function handleGuitarClick(s, f) {
+  if (answered) return;
+  initAudio();
+  const frets = gPressed.get(s);
+  if (frets.has(f)) {
+    frets.delete(f);
+  } else {
+    frets.add(f);
+    pluckGuitar(freqAt(s, f));
+  }
+  pressed = getPressedAsFlat();
+  updateGuitarUI();
+}
+
+// 把 gPressed 攤平成一個 Set，供 check() 用（存 [s*10+f] 作唯一鍵）
+function getPressedAsFlat() {
+  const flat = new Set();
+  for (let s = 0; s < 6; s++) gPressed.get(s).forEach(f => flat.add(s * 10 + f));
+  return flat;
+}
+
+function getPressedNoteNames() {
+  const names = new Set();
+  for (let s = 0; s < 6; s++) gPressed.get(s).forEach(f => names.add(noteAt(s, f)));
+  return names;
+}
+
+// 最低音：從第6弦往第1弦找，第一條有選音的弦的最低格
+function getLowestNoteName() {
+  for (let s = 0; s < 6; s++) {
+    const frets = gPressed.get(s);
+    if (frets.size > 0) return noteAt(s, Math.min(...frets));
+  }
+  return -1;
+}
+
+function updateGuitarUI() {
+  const targetNames  = new Set(Q ? Q.notes.map(n => n % 12) : []);
+  const pressedNames = getPressedNoteNames();
+  const bassNoteName = Q ? Q.bassNote : -1;
+
+  for (let s = 0; s < 6; s++) {
+    for (let f = 0; f <= FRET_COUNT; f++) {
+      const dot = document.getElementById(`gdot-${s}-${f}`);
+      const nn  = noteAt(s, f);
+      const isSel = gPressed.get(s).has(f);
+      dot.className = 'finger-dot';
+      dot.textContent = '';
+
+      if (answered) {
+        if (isSel) {
+          if (targetNames.has(nn)) dot.classList.add('state-correct');
+          else dot.classList.add('state-wrong');
+          dot.textContent = NOTES_NAME[nn];
+        } else if (targetNames.has(nn) && !pressedNames.has(nn)) {
+          dot.classList.add('state-missing');
+          dot.textContent = NOTES_NAME[nn];
+        } else {
+          dot.classList.add('state-empty');
+        }
+        if (showBassMark && isSel && nn === bassNoteName) dot.classList.add('bass-mark');
+      } else {
+        if (isSel) {
+          dot.classList.add('state-active');
+          dot.textContent = NOTES_NAME[nn];
+        } else {
+          dot.classList.add('state-empty');
+        }
+      }
+    }
+  }
+}
+
+// --- 出題邏輯 ---
+function newQ() {
+  if (currentRound >= MAX_ROUNDS) { showFinalResult(); return; }
+  currentRound++;
+  answered = false;
+  showBassMark = false;
+  for (let s = 0; s < 6; s++) gPressed.get(s).clear();
+  pressed = new Set();
+
+  document.getElementById('qProgress').textContent = `QUESTION ${currentRound} / ${MAX_ROUNDS}`;
+  document.getElementById('progressBar').style.width = `${(currentRound / MAX_ROUNDS) * 100}%`;
+  document.getElementById('submitBtn').style.display = 'block';
+  document.getElementById('nextBtn').style.display = 'none';
+
+  const pool = CHORD_TYPES.filter(t => selectedTypes.has(t.id));
+  const t    = pool[Math.floor(Math.random() * pool.length)];
+  const root = Math.floor(Math.random() * 12);
+
+  // 轉位計算
+  const baseIntervals = t.iv; // e.g. [0,4,7]
+  let inversionIndex  = 0;
+
+  if (inversionMode) {
+    inversionIndex = Math.floor(Math.random() * baseIntervals.length);
+  }
+
+  // 以最低音為基準排列音符（在兩個八度鍵盤範圍內）
+  // 做法：先排好音名順序（從最低音往上），再映射到鍵盤索引
+  const noteNames = baseIntervals.map(iv => (root + iv) % 12); // 音名陣列
+  // 轉位後，最低音是 noteNames[inversionIndex]
+  const bassNoteName = noteNames[inversionIndex];
+
+  // 建構鍵盤音符：最低音盡量放在八度0，其餘往上疊
+  // 策略：從 bassNoteName 開始，依序往上找每個音的鍵盤位置
+  const orderedNoteNames = [
+    ...noteNames.slice(inversionIndex),
+    ...noteNames.slice(0, inversionIndex)
+  ]; // 從最低音開始的音名順序
+
+  const notes = [];
+  let cursor = 0; // 從鍵盤索引 0 開始往上找
+  for (const name of orderedNoteNames) {
+    // 找到 >= cursor 的最近該音名鍵盤位置
+    let pos = cursor;
+    while (pos % 12 !== name) pos++;
+    // 限制在 0~23（兩個八度）
+    if (pos > 23) pos -= 12;
+    notes.push(pos);
+    cursor = pos + 1;
+  }
+
+  Q = { root, type: t, notes, inversionIndex, bassNote: bassNoteName };
+
+  // 更新題目顯示
+  const rootName = NOTES_NAME[root];
+  const chordSuffix = (t.id === 'maj') ? '' : t.id;
+  const badge = document.getElementById('inversionBadge');
+  const cnameEl = document.getElementById('cname');
+
+  if (inversionMode && inversionIndex > 0) {
+    // 斜線和弦格式：C/E
+    const bassName = NOTES_NAME[bassNoteName];
+    cnameEl.innerHTML =
+      `<span>${rootName}${chordSuffix}</span>` +
+      `<span class="chord-slash">/</span>` +
+      `<span class="chord-bass">${bassName}</span>`;
+    badge.textContent = INVERSION_LABELS[inversionIndex];
+    badge.style.visibility = 'visible';
+  } else {
+    cnameEl.textContent = rootName + chordSuffix;
+    badge.textContent   = inversionMode ? 'ROOT POSITION' : '';
+    badge.style.visibility = inversionMode ? 'visible' : 'hidden';
+  }
+
+  document.getElementById('ctype').textContent = t.n + '和弦';
+  document.getElementById('hnotes').style.visibility = 'hidden';
+  document.getElementById('hnotes').textContent = orderedNoteNames.map(n => NOTES_NAME[n]).join(' · ');
+  document.getElementById('qcard').className = 'qcard';
+  updateGuitarUI();
+}
+
+// --- 判定 ---
+function check() {
+  if (answered || getPressedNoteNames().size === 0) return;
+
+  const targetNames  = new Set(Q.notes.map(n => n % 12));
+  const pressedNames = getPressedNoteNames();
+
+  // 音符是否完全正確
+  const notesOk = (pressedNames.size === targetNames.size) && [...targetNames].every(n => pressedNames.has(n));
+
+  // 最低音是否正確（轉位模式開啟時一律檢查）
+  const lowestName = getLowestNoteName();
+  const bassOk = !inversionMode || (lowestName === Q.bassNote);
+
+  const inversionOk = bassOk;
+  const isOk = notesOk && inversionOk;
+
+  // 三角形：轉位模式 + 沒完全答對 + bass note 按錯
+  showBassMark = inversionMode && !isOk && !bassOk;
+
+  answered = true;
+  document.getElementById('submitBtn').style.display = 'none';
+  document.getElementById('nextBtn').style.display = 'block';
+
+  if (isOk) {
+    correctCount++;
+    document.getElementById('qcard').className = 'qcard ok';
+  } else {
+    wrongCount++;
+    document.getElementById('qcard').className = 'qcard ng';
+  }
+
+  document.getElementById('sc').textContent = correctCount;
+  document.getElementById('sw').textContent = wrongCount;
+  document.getElementById('totalScore').textContent = correctCount * 5;
+  document.getElementById('hnotes').style.visibility = 'visible';
+  updateGuitarUI();
+}
+
+// --- 結算 ---
+function showFinalResult() {
+  document.getElementById('app').style.display = 'none';
+  const resultPage = document.getElementById('resultPage');
+  resultPage.style.display = 'flex';
+  const finalScore = correctCount * 5;
+  document.getElementById('finalScore').textContent = finalScore;
+  document.getElementById('finalDetail').innerHTML = `
+    Correct answers: ${correctCount} / ${MAX_ROUNDS}<br>
+    Score: ${finalScore} / 100<br>
+    Accuracy rate: ${(correctCount / MAX_ROUNDS) * 100}%
+  `;
+}
+
+// --- 篩選器 ---
+function initFilters() {
+  const grid = document.getElementById('filterGrid');
+  CHORD_TYPES.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = `f-btn ${selectedTypes.has(t.id) ? 'on' : ''}`;
+    btn.textContent = t.n;
+    btn.onclick = () => {
+      if (selectedTypes.has(t.id) && selectedTypes.size > 1) {
+        selectedTypes.delete(t.id); btn.classList.remove('on');
+      } else {
+        selectedTypes.add(t.id); btn.classList.add('on');
+      }
+    };
+    grid.appendChild(btn);
+  });
+}
+
+// --- 轉位開關 ---
+function initInversionToggle() {
+  const toggle = document.getElementById('inversionToggle');
+  const label  = document.getElementById('toggleLabel');
+  toggle.addEventListener('change', () => {
+    inversionMode = toggle.checked;
+    label.textContent = `轉位模式：${inversionMode ? 'ON' : 'OFF'}`;
+    label.classList.toggle('active', inversionMode);
+  });
+}
+
+// --- 啟動 ---
+document.getElementById('startBtn').addEventListener('click', () => {
+  initAudio();
+  document.getElementById('unlocker').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  buildGuitar();
+  initFilters();
+  initInversionToggle();
+  newQ();
+});
+
+document.getElementById('submitBtn').onclick = check;
+document.getElementById('nextBtn').onclick   = newQ;
+</script>
+</body>
+</html>
