@@ -80,19 +80,18 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 .key.black.missing { background-color: var(--black-key) !important; }
 .key.white.missing { background-color: var(--white-key) !important; }
 
-/* 最低音標示（轉位用） */
-.key.bass-note::after {
+/* 根音標示（轉位模式答題後顯示，紅色三角） */
+.key.root-mark::after {
   content: '▼';
   position: absolute;
   top: 4px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 10px;
-  color: var(--accent2);
+  color: var(--ng);
   z-index: 20;
+  text-shadow: 0 0 6px var(--ng);
 }
-.key.active.bass-note::after,
-.key.correct.bass-note::after { color: var(--bg); }
 
 .submit-area { padding: 10px 15px; }
 .abtn { padding: 15px; font-family: var(--mono); border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; border-radius: 4px; text-transform: uppercase; width: 100%; }
@@ -300,6 +299,7 @@ let selectedTypes = new Set(['maj', 'min', '7']);
 let inversionMode = false;
 let Q = null, pressed = new Set(), answered = false;
 let correctCount = 0, wrongCount = 0, currentRound = 0;
+let showBassMark = false; // 轉位題且和弦音符全對時才顯示 bass note 三角
 const MAX_ROUNDS = 20;
 
 // --- 鋼琴建構 ---
@@ -328,15 +328,15 @@ function handleKeyClick(idx) {
 }
 
 function updatePianoUI() {
-  const targetNames   = new Set(Q ? Q.notes.map(n => n % 12) : []);
-  const pressedNames  = new Set([...pressed].map(n => n % 12));
-  // 最低音 note name（轉位時標示用）
-  const bassNoteName  = Q ? Q.bassNote : -1;
+  const targetNames  = new Set(Q ? Q.notes.map(n => n % 12) : []);
+  const pressedNames = new Set([...pressed].map(n => n % 12));
+  // 最低音音名（轉位模式答題後標示用）
+  const bassNoteName = Q ? Q.bassNote : -1;
 
   document.querySelectorAll('.key').forEach(el => {
     const idx = parseInt(el.dataset.idx);
     const noteNameIdx = idx % 12;
-    el.classList.remove('active', 'correct', 'wrong', 'missing', 'bass-note');
+    el.classList.remove('active', 'correct', 'wrong', 'missing', 'root-mark');
 
     if (answered) {
       if (pressed.has(idx)) {
@@ -345,9 +345,9 @@ function updatePianoUI() {
       } else if (targetNames.has(noteNameIdx) && !pressedNames.has(noteNameIdx)) {
         el.classList.add('missing');
       }
-      // 標示正確的最低音（轉位模式才顯示）
-      if (inversionMode && noteNameIdx === bassNoteName) {
-        el.classList.add('bass-note');
+      // 轉位題且和弦音符全對才標示 bass note（紅色三角）
+      if (showBassMark && noteNameIdx === bassNoteName) {
+        el.classList.add('root-mark');
       }
     } else {
       if (pressed.has(idx)) el.classList.add('active');
@@ -360,6 +360,7 @@ function newQ() {
   if (currentRound >= MAX_ROUNDS) { showFinalResult(); return; }
   currentRound++;
   answered = false;
+  showBassMark = false;
   Object.keys(activeNodes).forEach(k => stopTone(parseInt(k)));
   pressed.clear();
 
@@ -441,7 +442,19 @@ function check() {
 
   const targetNames  = new Set(Q.notes.map(n => n % 12));
   const pressedNames = new Set([...pressed].map(n => n % 12));
-  const isOk = (pressedNames.size === targetNames.size) && [...targetNames].every(n => pressedNames.has(n));
+
+  // 音符是否完全正確
+  const notesOk = (pressedNames.size === targetNames.size) && [...targetNames].every(n => pressedNames.has(n));
+
+  // 最低音是否正確（轉位模式開啟時一律檢查，不限轉位題）
+  const lowestPressed = Math.min(...pressed);
+  const bassOk = !inversionMode || (lowestPressed % 12 === Q.bassNote);
+
+  const inversionOk = bassOk;
+  const isOk = notesOk && inversionOk;
+
+  // 三角形：轉位模式 + 沒完全答對 + bass note 按錯
+  showBassMark = inversionMode && !isOk && !bassOk;
 
   answered = true;
   document.getElementById('submitBtn').style.display = 'none';
