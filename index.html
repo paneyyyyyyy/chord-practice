@@ -170,14 +170,14 @@ function stopTone(idx) {
 const CHORD_TYPES = [
   {id:'maj', n:'大三', iv:[0,4,7]}, {id:'min', n:'小三', iv:[0,3,7]},
   {id:'dim', n:'減三', iv:[0,3,6]}, {id:'aug', n:'增三', iv:[0,4,8]},
-  {id:'dom7', n:'屬七', iv:[0,4,7,10]}, {id:'maj7', n:'大七', iv:[0,4,7,11]},
+  {id:'7', n:'屬七', iv:[0,4,7,10]}, {id:'maj7', n:'大七', iv:[0,4,7,11]},
   {id:'min7', n:'小七', iv:[0,3,7,10]}, {id:'dim7', n:'減七', iv:[0,3,6,9]},
   {id:'hdim7', n:'半減七', iv:[0,3,6,10]}
 ];
 const NOTES_NAME = ['C','C#','D','E♭','E','F','F#','G','G#','A','B♭','B'];
 const LAYOUT = ['w','b','w','b','w','w','b','w','b','w','b','w'];
 
-let selectedTypes = new Set(['maj', 'min', 'dom7']);
+let selectedTypes = new Set(['maj', 'min', '7']);
 let Q = null, pressed = new Set(), answered = false;
 let correctCount = 0, wrongCount = 0, currentRound = 0;
 const MAX_ROUNDS = 20;
