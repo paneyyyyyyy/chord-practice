@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Chord Testing System - Pro Octave</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, shrink-to-fit=no">
+<title>Chord Testing System - Stable Pro</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -21,8 +21,25 @@
   --mono:      'Share Tech Mono', monospace;
   --sans:      'Noto Sans TC', sans-serif;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; overflow-x: hidden; padding-bottom: 40px; }
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+  -webkit-tap-highlight-color: transparent;
+  /* 關鍵修正：防止所有元素的預設觸控縮放行為 */
+  touch-action: manipulation;
+}
+body { 
+  background: var(--bg); 
+  color: var(--text); 
+  font-family: var(--sans); 
+  min-height: 100vh; 
+  overflow-x: hidden; 
+  padding-bottom: 40px;
+  /* 防止文字選取干擾點擊 */
+  user-select: none;
+  -webkit-user-select: none;
+}
 
 .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
 .abtn-big { padding: 20px 50px; background: transparent; color: var(--accent); border: 2px solid var(--accent); border-radius: 4px; font-family: var(--mono); font-size: 18px; cursor: pointer; text-transform: uppercase; }
@@ -62,17 +79,18 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 
 .hint-notes { font-family: var(--mono); font-size: 14px; color: var(--accent2); background: rgba(0,255,179,0.05); padding: 5px 15px; border-radius: 20px; display: inline-block; }
 
-.guitar-container { padding: 10px 15px; overflow-x: auto; }
+/* 指板容器：確保不被撐開 */
+.guitar-container { padding: 10px 15px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .fret-header { display: flex; align-items: center; margin-bottom: 2px; padding-left: 38px; }
 .fret-label { font-family: var(--mono); font-size: 10px; color: var(--text3); text-align: center; flex-shrink: 0; }
 .string-row { display: flex; align-items: center; margin-bottom: 2px; position: relative; }
 .string-name-label { width: 32px; font-family: var(--mono); font-size: 11px; color: var(--text2); text-align: right; padding-right: 6px; flex-shrink: 0; }
 .nut { width: 6px; align-self: stretch; background: var(--text2); opacity: 0.5; flex-shrink: 0; border-radius: 1px; }
-.fret-cell { position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-right: 2px solid var(--border); }
+.fret-cell { position: relative; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border-right: 2px solid var(--border); touch-action: manipulation; }
 .fret-cell:last-child { border-right: none; }
 .string-wire { position: absolute; top: 50%; left: 0; right: 0; pointer-events: none; background: var(--text2); transform: translateY(-50%); }
 .fret-dot-marker { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: var(--text3); pointer-events: none; }
-.finger-dot { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 500; position: relative; z-index: 2; transition: background 0.1s; cursor: pointer; flex-shrink: 0; }
+.finger-dot { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 500; position: relative; z-index: 2; transition: background 0.1s; cursor: pointer; flex-shrink: 0; touch-action: manipulation; }
 .finger-dot.state-empty { background: transparent; color: transparent; }
 .finger-dot.state-active { background: var(--accent); color: var(--bg); }
 .finger-dot.state-correct { background: var(--ok); color: var(--bg); }
@@ -96,7 +114,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 <div id="unlocker" class="overlay">
   <div style="font-family:var(--mono); color:var(--text3); margin-bottom:10px;">CHORD CHALLENGE - INVERSION MODE</div>
   <button id="startBtn" class="abtn-big">START TRAINING</button>
-  <div style="font-size:12px; color:var(--text3); margin-top:20px;">Interactive Guitar Training System</div>
+  <div style="font-size:12px; color:var(--text3); margin-top:20px;">Stable UI & Realistic Synth Tone</div>
 </div>
 
 <div id="resultPage" class="overlay" style="display:none;">
@@ -142,13 +160,10 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 </div>
 
 <script>
+// --- 音訊模組 ---
 let audioCtx = null;
 const activeTones = new Map(); 
-
-// 高八度基礎頻率
-const GUITAR_BASE_FREQS = [
-  329.63 * 2, 246.94 * 2, 196.00 * 2, 146.83 * 2, 110.00 * 2, 82.41 * 2
-];
+const GUITAR_BASE_FREQS = [329.63 * 2, 246.94 * 2, 196.00 * 2, 146.83 * 2, 110.00 * 2, 82.41 * 2];
 
 function initAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -159,8 +174,7 @@ function stopTone(key) {
   if (activeTones.has(key)) {
     const t = audioCtx.currentTime;
     const items = activeTones.get(key);
-    // 停止振盪器並清理增益節點
-    items.oscs.forEach(osc => osc.stop(t));
+    items.oscs.forEach(osc => { try { osc.stop(t); } catch(e) {} });
     items.gain.gain.cancelScheduledValues(t);
     items.gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
     activeTones.delete(key);
@@ -170,7 +184,7 @@ function stopTone(key) {
 function stopAllTones() {
   const t = audioCtx ? audioCtx.currentTime : 0;
   activeTones.forEach((items, key) => {
-    items.oscs.forEach(osc => osc.stop(t));
+    items.oscs.forEach(osc => { try { osc.stop(t); } catch(e) {} });
     items.gain.gain.cancelScheduledValues(t);
     items.gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
   });
@@ -180,18 +194,9 @@ function stopAllTones() {
 function pluckGuitar(key, freq, volume = 0.35) {
   initAudio();
   const t = audioCtx.currentTime;
-
-  const osc1 = audioCtx.createOscillator();
-  osc1.type = 'sawtooth';
-  osc1.frequency.value = freq;
-
-  const osc2 = audioCtx.createOscillator();
-  osc2.type = 'triangle';
-  osc2.frequency.value = freq * 2.001;
-
-  const osc3 = audioCtx.createOscillator();
-  osc3.type = 'sine';
-  osc3.frequency.value = freq * 0.5;
+  const osc1 = audioCtx.createOscillator(); osc1.type = 'sawtooth'; osc1.frequency.value = freq;
+  const osc2 = audioCtx.createOscillator(); osc2.type = 'triangle'; osc2.frequency.value = freq * 2.001;
+  const osc3 = audioCtx.createOscillator(); osc3.type = 'sine'; osc3.frequency.value = freq * 0.5;
 
   const filter = audioCtx.createBiquadFilter();
   filter.type = 'lowpass';
@@ -203,7 +208,7 @@ function pluckGuitar(key, freq, volume = 0.35) {
   gain.gain.linearRampToValueAtTime(volume, t + 0.008);
   gain.gain.exponentialRampToValueAtTime(volume * 0.6, t + 0.05);
   gain.gain.exponentialRampToValueAtTime(volume * 0.15, t + 0.4);
-  gain.gain.exponentialRampToValueAtTime(0.0001, t + 4.0); // 延長至 4 秒
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 4.0);
 
   const g1 = audioCtx.createGain(); g1.gain.value = 0.5;
   const g2 = audioCtx.createGain(); g2.gain.value = 0.3;
@@ -215,11 +220,10 @@ function pluckGuitar(key, freq, volume = 0.35) {
   gain.connect(audioCtx.destination);
 
   osc1.start(t); osc2.start(t); osc3.start(t);
-  
-  // 紀錄以便手動停止
   activeTones.set(key, { oscs: [osc1, osc2, osc3], gain: gain });
 }
 
+// --- 核心資料 ---
 const CHORD_TYPES = [
   {id:'maj',   n:'大三',  iv:[0,4,7]},
   {id:'min',   n:'小三',  iv:[0,3,7]},
@@ -231,7 +235,6 @@ const CHORD_TYPES = [
   {id:'dim7',  n:'減七',  iv:[0,3,6,9]},
   {id:'hdim7', n:'半減七', iv:[0,3,6,10]}
 ];
-
 const NOTES_NAME = ['C','C#','D','E♭','E','F','F#','G','G#','A','B♭','B'];
 const INVERSION_LABELS = ['ROOT POSITION', '1ST INVERSION', '2ND INVERSION', '3RD INVERSION'];
 
@@ -241,7 +244,7 @@ let correctCount = 0, wrongCount = 0, currentRound = 0;
 let showBassMark = false;
 const MAX_ROUNDS = 20;
 
-const OPEN_NOTES      = [4, 11, 7, 2, 9, 4]; // e B G D A E
+const OPEN_NOTES      = [4, 11, 7, 2, 9, 4];
 const STRING_NAMES    = ['e','B','G','D','A','E'];
 const FRET_COUNT      = 5;
 const MARKER_FRETS    = new Set([3, 5]);
@@ -259,53 +262,32 @@ function buildGuitar() {
   const header = document.createElement('div');
   header.className = 'fret-header';
   const openLbl = document.createElement('div');
-  openLbl.className = 'fret-label';
-  openLbl.style.width = '42px';
-  openLbl.textContent = 'open';
+  openLbl.className = 'fret-label'; openLbl.style.width = '42px'; openLbl.textContent = 'open';
   header.appendChild(openLbl);
   for (let f = 1; f <= FRET_COUNT; f++) {
     const lbl = document.createElement('div');
-    lbl.className = 'fret-label';
-    lbl.style.width = '52px';
-    lbl.textContent = f;
+    lbl.className = 'fret-label'; lbl.style.width = '52px'; lbl.textContent = f;
     header.appendChild(lbl);
   }
   container.appendChild(header);
 
   for (let s = 0; s < 6; s++) {
-    const row = document.createElement('div');
-    row.className = 'string-row';
-    const nameLbl = document.createElement('div');
-    nameLbl.className = 'string-name-label';
-    nameLbl.textContent = STRING_NAMES[s];
+    const row = document.createElement('div'); row.className = 'string-row';
+    const nameLbl = document.createElement('div'); nameLbl.className = 'string-name-label'; nameLbl.textContent = STRING_NAMES[s];
     row.appendChild(nameLbl);
-    const nut = document.createElement('div');
-    nut.className = 'nut';
+    const nut = document.createElement('div'); nut.className = 'nut';
     row.appendChild(nut);
 
     for (let f = 0; f <= FRET_COUNT; f++) {
       const cell = document.createElement('div');
-      cell.className = 'fret-cell';
-      cell.style.width = f === 0 ? '42px' : '52px';
-      cell.style.height = '44px';
-      const wire = document.createElement('div');
-      wire.className = 'string-wire';
-      wire.style.height = STRING_THICKNESS[s] + 'px';
-      wire.style.opacity = '0.4';
+      cell.className = 'fret-cell'; cell.style.width = f === 0 ? '42px' : '52px'; cell.style.height = '44px';
+      const wire = document.createElement('div'); wire.className = 'string-wire'; wire.style.height = STRING_THICKNESS[s] + 'px'; wire.style.opacity = '0.4';
       cell.appendChild(wire);
-
       if (MARKER_FRETS.has(f) && s === 3) {
-        const m = document.createElement('div');
-        m.className = 'fret-dot-marker';
-        cell.appendChild(m);
+        const m = document.createElement('div'); m.className = 'fret-dot-marker'; cell.appendChild(m);
       }
-
       const dot = document.createElement('div');
-      dot.className = 'finger-dot state-empty';
-      dot.id = `gdot-${s}-${f}`;
-      dot.style.width = '28px';
-      dot.style.height = '28px';
-      dot.style.fontSize = '10px';
+      dot.className = 'finger-dot state-empty'; dot.id = `gdot-${s}-${f}`; dot.style.width = '28px'; dot.style.height = '28px'; dot.style.fontSize = '10px';
       cell.appendChild(dot);
       cell.addEventListener('pointerdown', e => { e.preventDefault(); handleGuitarClick(s, f); });
       row.appendChild(cell);
@@ -319,22 +301,12 @@ function handleGuitarClick(s, f) {
   initAudio();
   const key = `${s}-${f}`;
   const frets = gPressed.get(s);
-  
   if (frets.has(f)) {
-    frets.delete(f);
-    stopTone(key); 
+    frets.delete(f); stopTone(key); 
   } else {
-    frets.add(f);
-    pluckGuitar(key, freqAt(s, f)); 
+    frets.add(f); pluckGuitar(key, freqAt(s, f)); 
   }
-  pressed = getPressedAsFlat();
   updateGuitarUI();
-}
-
-function getPressedAsFlat() {
-  const flat = new Set();
-  for (let s = 0; s < 6; s++) gPressed.get(s).forEach(f => flat.add(s * 10 + f));
-  return flat;
 }
 
 function getPressedNoteNames() {
@@ -355,34 +327,23 @@ function updateGuitarUI() {
   const targetNames  = new Set(Q ? Q.notes.map(n => n % 12) : []);
   const pressedNames = getPressedNoteNames();
   const bassNoteName = Q ? Q.bassNote : -1;
-
   for (let s = 0; s < 6; s++) {
     for (let f = 0; f <= FRET_COUNT; f++) {
       const dot = document.getElementById(`gdot-${s}-${f}`);
       const nn  = noteAt(s, f);
       const isSel = gPressed.get(s).has(f);
-      dot.className = 'finger-dot';
-      dot.textContent = '';
-
+      dot.className = 'finger-dot'; dot.textContent = '';
       if (answered) {
         if (isSel) {
-          if (targetNames.has(nn)) dot.classList.add('state-correct');
-          else dot.classList.add('state-wrong');
+          dot.classList.add(targetNames.has(nn) ? 'state-correct' : 'state-wrong');
           dot.textContent = NOTES_NAME[nn];
         } else if (targetNames.has(nn) && !pressedNames.has(nn)) {
-          dot.classList.add('state-missing');
-          dot.textContent = NOTES_NAME[nn];
-        } else {
-          dot.classList.add('state-empty');
-        }
+          dot.classList.add('state-missing'); dot.textContent = NOTES_NAME[nn];
+        } else { dot.classList.add('state-empty'); }
         if (showBassMark && isSel && nn === bassNoteName) dot.classList.add('bass-mark');
       } else {
-        if (isSel) {
-          dot.classList.add('state-active');
-          dot.textContent = NOTES_NAME[nn];
-        } else {
-          dot.classList.add('state-empty');
-        }
+        if (isSel) { dot.classList.add('state-active'); dot.textContent = NOTES_NAME[nn]; }
+        else { dot.classList.add('state-empty'); }
       }
     }
   }
@@ -391,53 +352,31 @@ function updateGuitarUI() {
 function newQ() {
   stopAllTones(); 
   if (currentRound >= MAX_ROUNDS) { showFinalResult(); return; }
-  currentRound++;
-  answered = false;
-  showBassMark = false;
+  currentRound++; answered = false; showBassMark = false;
   for (let s = 0; s < 6; s++) gPressed.get(s).clear();
-  pressed = new Set();
-
   document.getElementById('qProgress').textContent = `QUESTION ${currentRound} / ${MAX_ROUNDS}`;
   document.getElementById('progressBar').style.width = `${(currentRound / MAX_ROUNDS) * 100}%`;
   document.getElementById('submitBtn').style.display = 'block';
   document.getElementById('nextBtn').style.display = 'none';
 
   const pool = CHORD_TYPES.filter(t => selectedTypes.has(t.id));
-  const t    = pool[Math.floor(Math.random() * pool.length)];
+  const t = pool[Math.floor(Math.random() * pool.length)];
   const root = Math.floor(Math.random() * 12);
-  const baseIntervals = t.iv;
-  
-  const inversionIndex = Math.floor(Math.random() * baseIntervals.length);
-
-  const noteNames = baseIntervals.map(iv => (root + iv) % 12);
-  const bassNoteName = noteNames[inversionIndex];
+  const inversionIndex = Math.floor(Math.random() * t.iv.length);
+  const noteNames = t.iv.map(iv => (root + iv) % 12);
   const orderedNoteNames = [...noteNames.slice(inversionIndex), ...noteNames.slice(0, inversionIndex)];
   
-  const notes = [];
-  let cursor = 0;
+  const notes = []; let cursor = 0;
   for (const name of orderedNoteNames) {
-    let pos = cursor;
-    while (pos % 12 !== name) pos++;
-    if (pos > 23) pos -= 12;
-    notes.push(pos);
-    cursor = pos + 1;
+    let pos = cursor; while (pos % 12 !== name) pos++;
+    if (pos > 23) pos -= 12; notes.push(pos); cursor = pos + 1;
   }
-
-  Q = { root, type: t, notes, inversionIndex, bassNote: bassNoteName };
-  const rootName = NOTES_NAME[root];
+  Q = { root, type: t, notes, inversionIndex, bassNote: noteNames[inversionIndex] };
   const chordSuffix = (t.id === 'maj') ? '' : t.id;
-  const badge = document.getElementById('inversionBadge');
-  const cnameEl = document.getElementById('cname');
-
-  badge.textContent = INVERSION_LABELS[inversionIndex];
-
+  document.getElementById('inversionBadge').textContent = INVERSION_LABELS[inversionIndex];
   if (inversionIndex > 0) {
-    const bassName = NOTES_NAME[bassNoteName];
-    cnameEl.innerHTML = `<span>${rootName}${chordSuffix}</span><span class="chord-slash">/</span><span class="chord-bass">${bassName}</span>`;
-  } else {
-    cnameEl.textContent = rootName + chordSuffix;
-  }
-
+    document.getElementById('cname').innerHTML = `<span>${NOTES_NAME[root]}${chordSuffix}</span><span class="chord-slash">/</span><span class="chord-bass">${NOTES_NAME[Q.bassNote]}</span>`;
+  } else { document.getElementById('cname').textContent = NOTES_NAME[root] + chordSuffix; }
   document.getElementById('ctype').textContent = t.n + '和弦';
   document.getElementById('hnotes').style.visibility = 'hidden';
   document.getElementById('hnotes').textContent = orderedNoteNames.map(n => NOTES_NAME[n]).join(' · ');
@@ -448,28 +387,17 @@ function newQ() {
 function check() {
   stopAllTones(); 
   if (answered || getPressedNoteNames().size === 0) return;
-  const targetNames  = new Set(Q.notes.map(n => n % 12));
+  const targetNames = new Set(Q.notes.map(n => n % 12));
   const pressedNames = getPressedNoteNames();
-  
   const notesOk = (pressedNames.size === targetNames.size) && [...targetNames].every(n => pressedNames.has(n));
   const lowestName = getLowestNoteName();
-  const bassOk = (lowestName === Q.bassNote); 
-  
-  const isOk = notesOk && bassOk;
-  showBassMark = !isOk && !bassOk;
-
+  const isOk = notesOk && (lowestName === Q.bassNote);
+  showBassMark = !isOk && (lowestName !== Q.bassNote);
   answered = true;
   document.getElementById('submitBtn').style.display = 'none';
   document.getElementById('nextBtn').style.display = 'block';
-
-  if (isOk) {
-    correctCount++;
-    document.getElementById('qcard').className = 'qcard ok';
-  } else {
-    wrongCount++;
-    document.getElementById('qcard').className = 'qcard ng';
-  }
-
+  document.getElementById('qcard').className = isOk ? 'qcard ok' : 'qcard ng';
+  if (isOk) correctCount++; else wrongCount++;
   document.getElementById('sc').textContent = correctCount;
   document.getElementById('sw').textContent = wrongCount;
   document.getElementById('totalScore').textContent = correctCount * 5;
@@ -478,45 +406,39 @@ function check() {
 }
 
 function showFinalResult() {
-  stopAllTones();
-  document.getElementById('app').style.display = 'none';
-  const resultPage = document.getElementById('resultPage');
-  resultPage.style.display = 'flex';
-  const finalScore = correctCount * 5;
-  document.getElementById('finalScore').textContent = finalScore;
-  document.getElementById('finalDetail').innerHTML = `
-    Correct: ${correctCount} / ${MAX_ROUNDS}<br>
-    Score: ${finalScore} / 100<br>
-    Accuracy: ${(correctCount / MAX_ROUNDS) * 100}%
-  `;
+  stopAllTones(); document.getElementById('app').style.display = 'none';
+  document.getElementById('resultPage').style.display = 'flex';
+  document.getElementById('finalScore').textContent = correctCount * 5;
+  document.getElementById('finalDetail').innerHTML = `Correct: ${correctCount} / ${MAX_ROUNDS}<br>Score: ${correctCount * 5} / 100`;
 }
 
 function initFilters() {
   const grid = document.getElementById('filterGrid');
   CHORD_TYPES.forEach(t => {
-    const btn = document.createElement('button');
-    btn.className = `f-btn ${selectedTypes.has(t.id) ? 'on' : ''}`;
+    const btn = document.createElement('button'); btn.className = `f-btn ${selectedTypes.has(t.id) ? 'on' : ''}`;
     btn.textContent = t.n;
     btn.onclick = () => {
-      if (selectedTypes.has(t.id) && selectedTypes.size > 1) {
-        selectedTypes.delete(t.id); btn.classList.remove('on');
-      } else {
-        selectedTypes.add(t.id); btn.classList.add('on');
-      }
+      if (selectedTypes.has(t.id) && selectedTypes.size > 1) { selectedTypes.delete(t.id); btn.classList.remove('on'); }
+      else { selectedTypes.add(t.id); btn.classList.add('on'); }
     };
     grid.appendChild(btn);
   });
 }
 
-document.getElementById('startBtn').addEventListener('click', () => {
-  initAudio();
-  document.getElementById('unlocker').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  buildGuitar();
-  initFilters();
-  newQ();
-});
+// --- 修正畫面跑位：阻止多指縮放與雙擊縮放 ---
+document.addEventListener('touchstart', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (e) => {
+  const now = (new Date()).getTime();
+  if (now - lastTouchEnd <= 300) e.preventDefault();
+  lastTouchEnd = now;
+}, false);
 
+document.getElementById('startBtn').addEventListener('click', () => {
+  initAudio(); document.getElementById('unlocker').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  buildGuitar(); initFilters(); newQ();
+});
 document.getElementById('submitBtn').onclick = check;
 document.getElementById('nextBtn').onclick   = newQ;
 </script>
