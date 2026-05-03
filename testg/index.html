@@ -183,57 +183,45 @@ function pluckGuitar(key, freq, volume = 0.35) {
   initAudio();
   const t = audioCtx.currentTime;
 
-  // 1. 主音振盪器：使用 sawtooth (鋸齒波) 提供豐富諧波
-  const osc1 = audioCtx.createOscillator();
-  osc1.type = 'sawtooth';
-  osc1.frequency.value = freq;
-
-  // 2. 泛音振盪器：模擬弦的金屬共鳴感
-  const osc2 = audioCtx.createOscillator();
-  osc2.type = 'triangle';
-  osc2.frequency.value = freq * 2.02; // 微幅失真模擬真實弦
-
-  // 3. 模擬撥片衝擊聲 (Noise Burst)：這是讓它像「撥」弦的關鍵
-  const noise = audioCtx.createBufferSource();
-  const bufferSize = audioCtx.sampleRate * 0.05; // 50ms 的雜訊
+  // 建立一個短促的雜訊衝擊（模擬撥弦）
+  const bufferSize = audioCtx.sampleRate / freq;
+  const scriptNode = audioCtx.createBufferSource();
   const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
   const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
-  noise.buffer = buffer;
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1; // 填充隨機雜訊
+  }
+  scriptNode.buffer = buffer;
 
-  const noiseFilter = audioCtx.createBiquadFilter();
-  noiseFilter.type = 'highpass';
-  noiseFilter.frequency.value = 1000;
+  // 核心：延遲補償（決定音高）
+  const delay = audioCtx.createDelay();
+  delay.delayTime.value = 1 / freq;
 
-  // 4. 動態低通濾波器：模擬吉他撥弦後高頻快速消失的特性
-  const filter = audioCtx.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.Q.value = 1;
-  filter.frequency.setValueAtTime(freq * 15, t); // 撥弦瞬間高頻全開
-  filter.frequency.exponentialRampToValueAtTime(freq * 1.5, t + 0.5); // 0.5秒內高頻衰減
+  // 核心：低通濾波器（模擬弦的能量損耗，讓聲音變圓潤）
+  const lowpass = audioCtx.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = freq * 3; // 調整這個數值可以改變明亮度
+
+  // 建立反饋迴路 (Feedback Loop)
+  const feedback = audioCtx.createGain();
+  feedback.gain.value = 0.992; // 決定音長，越接近 1 聲音撐越久
 
   const gain = audioCtx.createGain();
-  gain.gain.setValueAtTime(0, t);
-  gain.gain.linearRampToValueAtTime(volume, t + 0.005); // 極短的 Attack
-  gain.gain.exponentialRampToValueAtTime(volume * 0.7, t + 0.2); 
-  gain.gain.linearRampToValueAtTime(volume * 0.5, t + 10.0); // 長維持
+  gain.gain.setValueAtTime(volume, t);
+  gain.gain.linearRampToValueAtTime(volume * 0.8, t + 10); // 緩慢衰減
 
-  // 連接節點
-  osc1.connect(filter);
-  osc2.connect(filter);
-  noise.connect(noiseFilter);
-  noiseFilter.connect(filter);
+  // 連接：雜訊 -> 延遲 -> 濾波 -> 反饋 -> 回到延遲
+  scriptNode.connect(delay);
+  delay.connect(lowpass);
+  lowpass.connect(feedback);
+  feedback.connect(delay); // 形成環路
   
-  filter.connect(gain);
+  lowpass.connect(gain);
   gain.connect(audioCtx.destination);
 
-  osc1.start(t);
-  osc2.start(t);
-  noise.start(t);
-
+  scriptNode.start(t);
   activeTones.set(key, gain);
 }
-
 const CHORD_TYPES = [
   {id:'maj',   n:'大三',  iv:[0,4,7]},
   {id:'min',   n:'小三',  iv:[0,3,7]},
