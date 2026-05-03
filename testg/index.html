@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Chord Testing System - Pro</title>
+<title>Chord Testing System - Pro Octave</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -99,7 +99,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 <div id="unlocker" class="overlay">
   <div style="font-family:var(--mono); color:var(--text3); margin-bottom:10px;">CHORD CHALLENGE - INVERSION MODE</div>
   <button id="startBtn" class="abtn-big">START TRAINING</button>
-  <div style="font-size:12px; color:var(--text3); margin-top:20px;">Support Slash Chords & Root Inversions</div>
+  <div style="font-size:12px; color:var(--text3); margin-top:20px;">Sustain Tone & High Octave Enabled</div>
 </div>
 
 <div id="resultPage" class="overlay" style="display:none;">
@@ -146,45 +146,68 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); min-
 
 <script>
 let audioCtx = null;
-const GUITAR_BASE_FREQS = [329.63, 246.94, 196.00, 146.83, 110.00, 82.41]; // e4 B3 G3 D3 A2 E2
-const activeNodes = {};
+let activeGains = []; // 用於追蹤所有發出的聲音並進行控制
+
+// 已修正：高八度基礎頻率 (原本頻率 * 2)
+const GUITAR_BASE_FREQS = [
+  329.63 * 2, 246.94 * 2, 196.00 * 2, 146.83 * 2, 110.00 * 2, 82.41 * 2
+];
 
 function initAudio() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
 }
 
+// 停止所有當前聲音
+function stopAllTones() {
+  const t = audioCtx ? audioCtx.currentTime : 0;
+  activeGains.forEach(g => {
+    g.gain.cancelScheduledValues(t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.1); // 快速淡出，避免爆音
+  });
+  activeGains = [];
+}
+
 function pluckGuitar(freq, volume = 0.35) {
   initAudio();
   const t = audioCtx.currentTime;
+  
   const osc1 = audioCtx.createOscillator();
   osc1.type = 'sawtooth';
   osc1.frequency.value = freq;
+  
   const osc2 = audioCtx.createOscillator();
   osc2.type = 'triangle';
   osc2.frequency.value = freq * 2.001;
+  
   const osc3 = audioCtx.createOscillator();
   osc3.type = 'sine';
   osc3.frequency.value = freq * 0.5;
+  
   const filter = audioCtx.createBiquadFilter();
   filter.type = 'lowpass';
   filter.frequency.setValueAtTime(freq * 12, t);
   filter.frequency.exponentialRampToValueAtTime(freq * 3, t + 0.4);
+  
   const gain = audioCtx.createGain();
   gain.gain.setValueAtTime(0, t);
-  gain.gain.linearRampToValueAtTime(volume, t + 0.008);
-  gain.gain.exponentialRampToValueAtTime(volume * 0.6, t + 0.05);
-  gain.gain.exponentialRampToValueAtTime(volume * 0.15, t + 0.4);
-  gain.gain.exponentialRampToValueAtTime(0.0001, t + 2.2);
+  gain.gain.linearRampToValueAtTime(volume, t + 0.01);
+  // 已修正：音量延長至按下按鈕
+  gain.gain.exponentialRampToValueAtTime(volume * 0.8, t + 0.1);
+  gain.gain.linearRampToValueAtTime(volume * 0.6, t + 10.0); // 10秒長的維持
+  
   const g1 = audioCtx.createGain(); g1.gain.value = 0.5;
   const g2 = audioCtx.createGain(); g2.gain.value = 0.3;
   const g3 = audioCtx.createGain(); g3.gain.value = 0.2;
+  
   osc1.connect(g1); osc2.connect(g2); osc3.connect(g3);
   g1.connect(filter); g2.connect(filter); g3.connect(filter);
   filter.connect(gain);
   gain.connect(audioCtx.destination);
+  
   osc1.start(t); osc2.start(t); osc3.start(t);
-  osc1.stop(t + 2.5); osc2.stop(t + 2.5); osc3.stop(t + 2.5);
+  
+  activeGains.push(gain);
 }
 
 const CHORD_TYPES = [
@@ -208,7 +231,6 @@ let correctCount = 0, wrongCount = 0, currentRound = 0;
 let showBassMark = false;
 const MAX_ROUNDS = 20;
 
-// --- 常數：高音在上，低音在下 ---
 const OPEN_NOTES      = [4, 11, 7, 2, 9, 4]; // e B G D A E
 const STRING_NAMES    = ['e','B','G','D','A','E'];
 const FRET_COUNT      = 5;
@@ -262,7 +284,6 @@ function buildGuitar() {
       wire.style.opacity = '0.4';
       cell.appendChild(wire);
 
-      // 標記點顯示在中間弦 (D弦)
       if (MARKER_FRETS.has(f) && s === 3) {
         const m = document.createElement('div');
         m.className = 'fret-dot-marker';
@@ -309,7 +330,6 @@ function getPressedNoteNames() {
   return names;
 }
 
-// 判定最低音：由下(s=5, 低音E)往上找
 function getLowestNoteName() {
   for (let s = 5; s >= 0; s--) {
     const frets = gPressed.get(s);
@@ -356,6 +376,7 @@ function updateGuitarUI() {
 }
 
 function newQ() {
+  stopAllTones(); // 新題目開始前切斷所有聲音
   if (currentRound >= MAX_ROUNDS) { showFinalResult(); return; }
   currentRound++;
   answered = false;
@@ -373,7 +394,6 @@ function newQ() {
   const root = Math.floor(Math.random() * 12);
   const baseIntervals = t.iv;
   
-  // 固定啟用轉位計算
   const inversionIndex = Math.floor(Math.random() * baseIntervals.length);
 
   const noteNames = baseIntervals.map(iv => (root + iv) % 12);
@@ -413,16 +433,17 @@ function newQ() {
 }
 
 function check() {
+  stopAllTones(); // 確認時切斷所有聲音
   if (answered || getPressedNoteNames().size === 0) return;
   const targetNames  = new Set(Q.notes.map(n => n % 12));
   const pressedNames = getPressedNoteNames();
   
   const notesOk = (pressedNames.size === targetNames.size) && [...targetNames].every(n => pressedNames.has(n));
   const lowestName = getLowestNoteName();
-  const bassOk = (lowestName === Q.bassNote); // 必須匹配題目要求的最低音
+  const bassOk = (lowestName === Q.bassNote); 
   
   const isOk = notesOk && bassOk;
-  showBassMark = !isOk && !bassOk; // 如果錯在最低音，顯示標記
+  showBassMark = !isOk && !bassOk;
 
   answered = true;
   document.getElementById('submitBtn').style.display = 'none';
@@ -444,6 +465,7 @@ function check() {
 }
 
 function showFinalResult() {
+  stopAllTones();
   document.getElementById('app').style.display = 'none';
   const resultPage = document.getElementById('resultPage');
   resultPage.style.display = 'flex';
