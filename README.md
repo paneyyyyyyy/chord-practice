@@ -61,4 +61,4 @@
 ---
 
 ## 📄 版權宣告
-本專案由 Peggy 與 Gemini AI 協作開發，僅供教育與學術練習使用。
+本專案由 Paneyyyyyyy 與 Gemini AI 協作開發，僅供教育與學術練習使用。
