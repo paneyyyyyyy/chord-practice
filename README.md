@@ -1,4 +1,4 @@
-# 🎹 鋼琴和弦大師 (Piano Chord Trainer) v5.5
+# 🎹 鋼琴和弦大師 (Piano Chord Trainer)
 
 一個基於 Web Audio API 開發的互動式鋼琴和弦練習系統。專為音樂學習者設計，透過直覺的鋼琴界面與即時音效反饋，幫助使用者掌握各種和弦組成音及其轉位。
 
